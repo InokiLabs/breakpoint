@@ -1,0 +1,30 @@
+# HAND-WRITTEN FIXTURE mirroring the key layout of a unitree_rl_gym deploy_mujoco config
+# (policy_path, kps, kds, default_angles, *_scale, num_actions, num_obs). Values are
+# illustrative for a Go2-class quadruped; not a copy of the upstream file.
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/pre_train/go2/motion.pt"
+xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/scene.xml"
+simulation_duration: 60.0
+simulation_dt: 0.005
+control_decimation: 4
+kps: [20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20]
+kds: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+default_angles: [0.1, 0.8, -1.5, -0.1, 0.8, -1.5, 0.1, 1.0, -1.5, -0.1, 1.0, -1.5]
+ang_vel_scale: 0.25
+dof_pos_scale: 1.0
+dof_vel_scale: 0.05
+action_scale: 0.25
+cmd_scale: [2.0, 2.0, 0.25]
+num_actions: 12
+num_obs: 45
+cmd_init: [0.5, 0, 0]
+# A deploy YAML does not carry training DR; unitree_rl_gym keeps it in the python config
+# (LeggedRobotCfg.domain_rand). `breakpoint init` reads a pasted block like this one.
+# Keys as in legged_gym; values illustrative (randomize_base_mass is false upstream).
+domain_rand:
+  randomize_friction: true
+  friction_range: [0.5, 1.25]
+  randomize_base_mass: true
+  added_mass_range: [-1.0, 2.0]
+  push_robots: true
+  push_interval_s: 15
+  max_push_vel_xy: 1.0

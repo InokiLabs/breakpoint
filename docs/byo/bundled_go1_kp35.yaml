@@ -1,0 +1,8 @@
+# Contract for the BUNDLED Go1 policy (breakpoint_mjx/assets/demo/go1_policy.pkl):
+# Playground's native obs layout and action scale, plus an actuation block. kp 35
+# is used by the regression (kp 35 = the target's own gains) and gap-check measurements
+# in docs/byo-policy.md.
+version: 1
+robot: go1
+obs: [base_lin_vel, base_ang_vel, projected_gravity, joint_pos_rel, joint_vel, last_action, commands]
+actuation: {kp: 35.0, kd: 0.5, action_scale: 0.5, source: hand-written, honor: true}

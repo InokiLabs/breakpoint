@@ -1,0 +1,972 @@
+{
+ "label": "SYNTHETIC (analytic failure set, CPU); not a robot or customer result",
+ "alpha": 0.3,
+ "delta": 0.05,
+ "floor_halfwidth": {
+  "0.1": {
+   "2000": 0.036786999553442,
+   "20000": 0.003687851130962372,
+   "200000": 0.0003688689321279526
+  },
+  "0.3": {
+   "2000": 0.012262333184480667,
+   "20000": 0.0012292837103207908,
+   "200000": 0.00012295631070931753
+  },
+  "0.5": {
+   "2000": 0.0073573999106884,
+   "20000": 0.0007375702261924744,
+   "200000": 7.377378642559052e-05
+  }
+ },
+ "cp_halfwidth_expected": {
+  "0.01": {
+   "2000": 0.004641734120419209,
+   "20000": 0.001404954306394689,
+   "200000": 0.0004385961003022607
+  },
+  "0.001": {
+   "2000": 0.0017432504896359184,
+   "20000": 0.0004665344305693637,
+   "200000": 0.000141132166139089
+  }
+ },
+ "crossover_n": {
+  "0.01": {
+   "0.1": 158113,
+   "0.3": 15811,
+   "0.5": 6294
+  },
+  "0.001": {
+   "0.1": null,
+   "0.3": 158113,
+   "0.5": 62946
+  }
+ },
+ "cells": [
+  {
+   "mc_cp": {
+    "median_halfwidth": 0.004641734120419209,
+    "coverage": 0.935,
+    "cp_over_method_width": 1.0
+   },
+   "mc_bet": {
+    "median_halfwidth": 0.006763278643229096,
+    "coverage": 0.97,
+    "cp_over_method_width": 0.6863141924613999
+   },
+   "is_bet": {
+    "median_halfwidth": 0.009102456325910908,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.5099430257309912
+   },
+   "dr_bet": {
+    "median_halfwidth": 0.012550151854583077,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.36985481723268043
+   },
+   "dr_bet_wrong_g": {
+    "median_halfwidth": 0.01369825431488433,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.3388558873064261
+   },
+   "dr_bet_bad_centers": {
+    "median_halfwidth": 0.012624491197468553,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.3676769263659484
+   },
+   "dr_bet_fixed_sd": {
+    "median_halfwidth": 0.012813815847409257,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.36224448483530314
+   },
+   "dr_bet_oracle_q": {
+    "median_halfwidth": 0.012364474557199353,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.37540892651329916
+   },
+   "is_wald": {
+    "median_halfwidth": 0.0034520402290546164,
+    "coverage": 0.775,
+    "cp_over_method_width": 1.3446350020348417
+   },
+   "dr_wald": {
+    "median_halfwidth": 0.0033513248088488067,
+    "coverage": 0.765,
+    "cp_over_method_width": 1.3850445376596199
+   },
+   "dr_wald_oracle_q": {
+    "median_halfwidth": 0.0008139786314105115,
+    "coverage": 0.93,
+    "cp_over_method_width": 5.7025257682449615
+   },
+   "max_w_observed": 3.3333333333333335,
+   "w_bound": 3.3333333333333335,
+   "d": 6,
+   "p_fail": 0.01,
+   "truth": 0.010000000000000004,
+   "n": 2000,
+   "reps": 200,
+   "variance_factor_E_p_wf_over_mu": {
+    "good": 0.6542417788344711,
+    "fixed": 2.2822311092086722,
+    "bad": 0.9961937546776078,
+    "oracle": 0.06979436891825229
+   },
+   "n_centers": 16,
+   "regions_hit": 3,
+   "surrogate_term": [
+    0.008866603547768213,
+    0.0002047341985121082
+   ]
+  },
+  {
+   "mc_cp": {
+    "median_halfwidth": 0.0013964019522631488,
+    "coverage": 0.94,
+    "cp_over_method_width": 1.0
+   },
+   "mc_bet": {
+    "median_halfwidth": 0.002511403794103085,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.5560244654969375
+   },
+   "is_bet": {
+    "median_halfwidth": 0.0019351754798871581,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.721589316719006
+   },
+   "dr_bet": {
+    "median_halfwidth": 0.0024548806095641418,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.5688268288171768
+   },
+   "dr_bet_wrong_g": {
+    "median_halfwidth": 0.004995539961961263,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.2795297331011476
+   },
+   "dr_bet_bad_centers": {
+    "median_halfwidth": 0.002600363776369325,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.5370025397803497
+   },
+   "dr_bet_fixed_sd": {
+    "median_halfwidth": 0.003011236426978231,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.4637304263964537
+   },
+   "dr_bet_oracle_q": {
+    "median_halfwidth": 0.0016860631181625785,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.8282026557729975
+   },
+   "is_wald": {
+    "median_halfwidth": 0.00109984150830892,
+    "coverage": 0.94,
+    "cp_over_method_width": 1.2696392541232695
+   },
+   "dr_wald": {
+    "median_halfwidth": 0.0010710039696037428,
+    "coverage": 0.96,
+    "cp_over_method_width": 1.3038251882295067
+   },
+   "dr_wald_oracle_q": {
+    "median_halfwidth": 0.00025647244766624066,
+    "coverage": 0.9,
+    "cp_over_method_width": 5.44464703701955
+   },
+   "max_w_observed": 3.3333333333333335,
+   "w_bound": 3.3333333333333335,
+   "d": 6,
+   "p_fail": 0.01,
+   "truth": 0.010000000000000004,
+   "n": 20000,
+   "reps": 50,
+   "variance_factor_E_p_wf_over_mu": {
+    "good": 0.6542417788344711,
+    "fixed": 2.2822311092086722,
+    "bad": 0.9961937546776078,
+    "oracle": 0.06979436891825229
+   },
+   "n_centers": 16,
+   "regions_hit": 3,
+   "surrogate_term": [
+    0.008866603547768213,
+    0.0002047341985121082
+   ]
+  },
+  {
+   "mc_cp": {
+    "median_halfwidth": 0.00043637774746703006,
+    "coverage": 1.0,
+    "cp_over_method_width": 1.0
+   },
+   "mc_bet": {
+    "median_halfwidth": 0.0009637009270683948,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.45281449380203814
+   },
+   "is_bet": {
+    "median_halfwidth": 0.0006002372819518082,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.7270087356920724
+   },
+   "dr_bet": {
+    "median_halfwidth": 0.0008583527767389854,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.5083897428804232
+   },
+   "dr_bet_wrong_g": {
+    "median_halfwidth": 0.0018135719098861056,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.24061783549263016
+   },
+   "dr_bet_bad_centers": {
+    "median_halfwidth": 0.0009617902022535374,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.45371407032902644
+   },
+   "dr_bet_fixed_sd": {
+    "median_halfwidth": 0.0011363498811062522,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.3840170661541411
+   },
+   "dr_bet_oracle_q": {
+    "median_halfwidth": 0.0003961937361364465,
+    "coverage": 1.0,
+    "cp_over_method_width": 1.1014251555878825
+   },
+   "is_wald": {
+    "median_halfwidth": 0.00034680886327330233,
+    "coverage": 0.8333333333333334,
+    "cp_over_method_width": 1.2582658451930713
+   },
+   "dr_wald": {
+    "median_halfwidth": 0.0003368734142931429,
+    "coverage": 0.8333333333333334,
+    "cp_over_method_width": 1.2953760342966685
+   },
+   "dr_wald_oracle_q": {
+    "median_halfwidth": 8.120586368640711e-05,
+    "coverage": 0.5,
+    "cp_over_method_width": 5.373722138492254
+   },
+   "max_w_observed": 3.3333333333333335,
+   "w_bound": 3.3333333333333335,
+   "d": 6,
+   "p_fail": 0.01,
+   "truth": 0.010000000000000004,
+   "n": 200000,
+   "reps": 6,
+   "variance_factor_E_p_wf_over_mu": {
+    "good": 0.6542417788344711,
+    "fixed": 2.2822311092086722,
+    "bad": 0.9961937546776078,
+    "oracle": 0.06979436891825229
+   },
+   "n_centers": 16,
+   "regions_hit": 3,
+   "surrogate_term": [
+    0.008866603547768213,
+    0.0002047341985121082
+   ]
+  },
+  {
+   "mc_cp": {
+    "median_halfwidth": 0.0017432504896359184,
+    "coverage": 0.96,
+    "cp_over_method_width": 1.0
+   },
+   "mc_bet": {
+    "median_halfwidth": 0.00253048404763281,
+    "coverage": 0.995,
+    "cp_over_method_width": 0.6889000115478601
+   },
+   "is_bet": {
+    "median_halfwidth": 0.006401765856038594,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.27230775520969147
+   },
+   "dr_bet": {
+    "median_halfwidth": 0.007566003551405955,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.23040571918737449
+   },
+   "dr_bet_wrong_g": {
+    "median_halfwidth": 0.007785596421340093,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.22390712224149195
+   },
+   "dr_bet_bad_centers": {
+    "median_halfwidth": 0.007553477945657795,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.2307877910251987
+   },
+   "dr_bet_fixed_sd": {
+    "median_halfwidth": 0.007559183531551096,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.23061359502118273
+   },
+   "dr_bet_oracle_q": {
+    "median_halfwidth": 0.007806218363492092,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.2233156194795555
+   },
+   "is_wald": {
+    "median_halfwidth": 0.00023702679554475132,
+    "coverage": 0.38,
+    "cp_over_method_width": 7.354655770582647
+   },
+   "dr_wald": {
+    "median_halfwidth": 0.00014013664816251705,
+    "coverage": 0.33,
+    "cp_over_method_width": 12.439647390554565
+   },
+   "dr_wald_oracle_q": {
+    "median_halfwidth": 9.492733294162755e-05,
+    "coverage": 0.985,
+    "cp_over_method_width": 18.3640521187704
+   },
+   "max_w_observed": 3.3333333333333335,
+   "w_bound": 3.3333333333333335,
+   "d": 6,
+   "p_fail": 0.001,
+   "truth": 0.0010000000000000007,
+   "n": 2000,
+   "reps": 200,
+   "variance_factor_E_p_wf_over_mu": {
+    "good": 1.7357536252973988,
+    "fixed": 2.30272694708653,
+    "bad": 1.9807649528658093,
+    "oracle": 0.007291284302741329
+   },
+   "n_centers": 16,
+   "regions_hit": 2,
+   "surrogate_term": [
+    0.00048657279107258716,
+    5.2319356555650624e-05
+   ]
+  },
+  {
+   "mc_cp": {
+    "median_halfwidth": 0.00045554549488616635,
+    "coverage": 1.0,
+    "cp_over_method_width": 1.0
+   },
+   "mc_bet": {
+    "median_halfwidth": 0.0007380078598322023,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.6172637443044872
+   },
+   "is_bet": {
+    "median_halfwidth": 0.0011062823305895003,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.4117805033037286
+   },
+   "dr_bet": {
+    "median_halfwidth": 0.0013336009048871464,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.3415905712246919
+   },
+   "dr_bet_wrong_g": {
+    "median_halfwidth": 0.0014484365384461314,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.3145084253224315
+   },
+   "dr_bet_bad_centers": {
+    "median_halfwidth": 0.001315608116986435,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.34626230182407985
+   },
+   "dr_bet_fixed_sd": {
+    "median_halfwidth": 0.0012652103929053269,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.36005513189003174
+   },
+   "dr_bet_oracle_q": {
+    "median_halfwidth": 0.0012580989009420194,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.36209036868649214
+   },
+   "is_wald": {
+    "median_halfwidth": 0.0005613474978554531,
+    "coverage": 0.88,
+    "cp_over_method_width": 0.811521377803432
+   },
+   "dr_wald": {
+    "median_halfwidth": 0.0005594558513161333,
+    "coverage": 0.92,
+    "cp_over_method_width": 0.8142653147955905
+   },
+   "dr_wald_oracle_q": {
+    "median_halfwidth": 3.0302258682203542e-05,
+    "coverage": 0.94,
+    "cp_over_method_width": 15.033384133629198
+   },
+   "max_w_observed": 3.3333333333333335,
+   "w_bound": 3.3333333333333335,
+   "d": 6,
+   "p_fail": 0.001,
+   "truth": 0.0010000000000000007,
+   "n": 20000,
+   "reps": 50,
+   "variance_factor_E_p_wf_over_mu": {
+    "good": 1.7357536252973988,
+    "fixed": 2.30272694708653,
+    "bad": 1.9807649528658093,
+    "oracle": 0.007291284302741329
+   },
+   "n_centers": 16,
+   "regions_hit": 2,
+   "surrogate_term": [
+    0.00048657279107258716,
+    5.2319356555650624e-05
+   ]
+  },
+  {
+   "mc_cp": {
+    "median_halfwidth": 0.0001407790839167995,
+    "coverage": 1.0,
+    "cp_over_method_width": 1.0
+   },
+   "mc_bet": {
+    "median_halfwidth": 0.000248121215435087,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.567380276893855
+   },
+   "is_bet": {
+    "median_halfwidth": 0.00031239520086828276,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.45064419531898353
+   },
+   "dr_bet": {
+    "median_halfwidth": 0.00039975263529752164,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.3521654930730417
+   },
+   "dr_bet_wrong_g": {
+    "median_halfwidth": 0.0005264239095308081,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.26742532276368924
+   },
+   "dr_bet_bad_centers": {
+    "median_halfwidth": 0.0004528711978975624,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.31085899163020553
+   },
+   "dr_bet_fixed_sd": {
+    "median_halfwidth": 0.0004179530671297265,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.33682988590942375
+   },
+   "dr_bet_oracle_q": {
+    "median_halfwidth": 0.00019866608050307205,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.7086216406963473
+   },
+   "is_wald": {
+    "median_halfwidth": 0.00018097484401639367,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.777893108193794
+   },
+   "dr_wald": {
+    "median_halfwidth": 0.00017720902157466263,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.794423910621761
+   },
+   "dr_wald_oracle_q": {
+    "median_halfwidth": 9.58038651076396e-06,
+    "coverage": 1.0,
+    "cp_over_method_width": 14.694509846615103
+   },
+   "max_w_observed": 3.3333333333333335,
+   "w_bound": 3.3333333333333335,
+   "d": 6,
+   "p_fail": 0.001,
+   "truth": 0.0010000000000000007,
+   "n": 200000,
+   "reps": 6,
+   "variance_factor_E_p_wf_over_mu": {
+    "good": 1.7357536252973988,
+    "fixed": 2.30272694708653,
+    "bad": 1.9807649528658093,
+    "oracle": 0.007291284302741329
+   },
+   "n_centers": 16,
+   "regions_hit": 2,
+   "surrogate_term": [
+    0.00048657279107258716,
+    5.2319356555650624e-05
+   ]
+  },
+  {
+   "mc_cp": {
+    "median_halfwidth": 0.004641734120419209,
+    "coverage": 0.96,
+    "cp_over_method_width": 1.0
+   },
+   "mc_bet": {
+    "median_halfwidth": 0.006804447464884843,
+    "coverage": 0.98,
+    "cp_over_method_width": 0.682161798496267
+   },
+   "is_bet": {
+    "median_halfwidth": 0.01053748982000615,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.4404971392339148
+   },
+   "dr_bet": {
+    "median_halfwidth": 0.012829047701182365,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.3618143940638254
+   },
+   "dr_bet_wrong_g": {
+    "median_halfwidth": 0.013477588794637969,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.3444038982897233
+   },
+   "dr_bet_bad_centers": {
+    "median_halfwidth": 0.012706954442546929,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.36529084458485234
+   },
+   "dr_bet_fixed_sd": {
+    "median_halfwidth": 0.013031700574007425,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.35618790456845284
+   },
+   "dr_bet_oracle_q": {
+    "median_halfwidth": 0.012280644099936393,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.3779715528473992
+   },
+   "is_wald": {
+    "median_halfwidth": 0.005477676247935597,
+    "coverage": 0.905,
+    "cp_over_method_width": 0.8473911035119255
+   },
+   "dr_wald": {
+    "median_halfwidth": 0.005334469574654239,
+    "coverage": 0.915,
+    "cp_over_method_width": 0.870139768436128
+   },
+   "dr_wald_oracle_q": {
+    "median_halfwidth": 0.0009461102122614558,
+    "coverage": 0.955,
+    "cp_over_method_width": 4.906124107173757
+   },
+   "max_w_observed": 3.3333333333333335,
+   "w_bound": 3.3333333333333335,
+   "d": 12,
+   "p_fail": 0.01,
+   "truth": 0.010000000000000004,
+   "n": 2000,
+   "reps": 200,
+   "variance_factor_E_p_wf_over_mu": {
+    "good": 1.662570015031595,
+    "fixed": 3.308152298754531,
+    "bad": 1.7340772088898606,
+    "oracle": 0.0702137065298771
+   },
+   "n_centers": 16,
+   "regions_hit": 3,
+   "surrogate_term": [
+    0.004459814801711911,
+    0.00014487171898386317
+   ]
+  },
+  {
+   "mc_cp": {
+    "median_halfwidth": 0.001404954306394689,
+    "coverage": 0.98,
+    "cp_over_method_width": 1.0
+   },
+   "mc_bet": {
+    "median_halfwidth": 0.002519869642785766,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.5575503917105347
+   },
+   "is_bet": {
+    "median_halfwidth": 0.0029739555325240773,
+    "coverage": 0.98,
+    "cp_over_method_width": 0.4724194060838112
+   },
+   "dr_bet": {
+    "median_halfwidth": 0.0034782172787026226,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.4039294252826948
+   },
+   "dr_bet_wrong_g": {
+    "median_halfwidth": 0.004666197968463431,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.30109187734641646
+   },
+   "dr_bet_bad_centers": {
+    "median_halfwidth": 0.0033192821361557883,
+    "coverage": 0.98,
+    "cp_over_method_width": 0.42327052921805275
+   },
+   "dr_bet_fixed_sd": {
+    "median_halfwidth": 0.003956405397224916,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.3551087831848945
+   },
+   "dr_bet_oracle_q": {
+    "median_halfwidth": 0.0016353580648325594,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.8591111247178391
+   },
+   "is_wald": {
+    "median_halfwidth": 0.001797771268270988,
+    "coverage": 0.92,
+    "cp_over_method_width": 0.7814978085315092
+   },
+   "dr_wald": {
+    "median_halfwidth": 0.0017474799433953043,
+    "coverage": 0.96,
+    "cp_over_method_width": 0.8039888021060215
+   },
+   "dr_wald_oracle_q": {
+    "median_halfwidth": 0.00030324049447447675,
+    "coverage": 0.92,
+    "cp_over_method_width": 4.633135521129886
+   },
+   "max_w_observed": 3.3333333333333335,
+   "w_bound": 3.3333333333333335,
+   "d": 12,
+   "p_fail": 0.01,
+   "truth": 0.010000000000000004,
+   "n": 20000,
+   "reps": 50,
+   "variance_factor_E_p_wf_over_mu": {
+    "good": 1.662570015031595,
+    "fixed": 3.308152298754531,
+    "bad": 1.7340772088898606,
+    "oracle": 0.0702137065298771
+   },
+   "n_centers": 16,
+   "regions_hit": 3,
+   "surrogate_term": [
+    0.004459814801711911,
+    0.00014487171898386317
+   ]
+  },
+  {
+   "mc_cp": {
+    "median_halfwidth": 0.0004393484190263917,
+    "coverage": 1.0,
+    "cp_over_method_width": 1.0
+   },
+   "mc_bet": {
+    "median_halfwidth": 0.0009640168255035035,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.4557476668489901
+   },
+   "is_bet": {
+    "median_halfwidth": 0.0010782944637609641,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.4074475329252792
+   },
+   "dr_bet": {
+    "median_halfwidth": 0.001261934787553931,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.3481546141366004
+   },
+   "dr_bet_wrong_g": {
+    "median_halfwidth": 0.0016982738543545872,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.2587029282113996
+   },
+   "dr_bet_bad_centers": {
+    "median_halfwidth": 0.0012276515508160002,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.3578771343826055
+   },
+   "dr_bet_fixed_sd": {
+    "median_halfwidth": 0.0014441809838811603,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.3042197784973362
+   },
+   "dr_bet_oracle_q": {
+    "median_halfwidth": 0.0003620548581348415,
+    "coverage": 1.0,
+    "cp_over_method_width": 1.2134857719897338
+   },
+   "is_wald": {
+    "median_halfwidth": 0.0005695207462168388,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.7714353198629829
+   },
+   "dr_wald": {
+    "median_halfwidth": 0.0005552022629521829,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.7913303823551433
+   },
+   "dr_wald_oracle_q": {
+    "median_halfwidth": 9.911709362267138e-05,
+    "coverage": 0.8333333333333334,
+    "cp_over_method_width": 4.4326200755940866
+   },
+   "max_w_observed": 3.3333333333333335,
+   "w_bound": 3.3333333333333335,
+   "d": 12,
+   "p_fail": 0.01,
+   "truth": 0.010000000000000004,
+   "n": 200000,
+   "reps": 6,
+   "variance_factor_E_p_wf_over_mu": {
+    "good": 1.662570015031595,
+    "fixed": 3.308152298754531,
+    "bad": 1.7340772088898606,
+    "oracle": 0.0702137065298771
+   },
+   "n_centers": 16,
+   "regions_hit": 3,
+   "surrogate_term": [
+    0.004459814801711911,
+    0.00014487171898386317
+   ]
+  },
+  {
+   "mc_cp": {
+    "median_halfwidth": 0.0017432504896359184,
+    "coverage": 0.965,
+    "cp_over_method_width": 1.0
+   },
+   "mc_bet": {
+    "median_halfwidth": 0.00253048404763281,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.6889000115478601
+   },
+   "is_bet": {
+    "median_halfwidth": 0.006175326846588246,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.28229282966601715
+   },
+   "dr_bet": {
+    "median_halfwidth": 0.007352576471149326,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.23709382642618343
+   },
+   "dr_bet_wrong_g": {
+    "median_halfwidth": 0.007351105800450053,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.23714125969037098
+   },
+   "dr_bet_bad_centers": {
+    "median_halfwidth": 0.007393891613577326,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.23576900781650706
+   },
+   "dr_bet_fixed_sd": {
+    "median_halfwidth": 0.007323100517492227,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.23804814442624764
+   },
+   "dr_bet_oracle_q": {
+    "median_halfwidth": 0.007785357923957998,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.22391398143319624
+   },
+   "is_wald": {
+    "median_halfwidth": 0.00013247763096104783,
+    "coverage": 0.49,
+    "cp_over_method_width": 13.1588289810865
+   },
+   "dr_wald": {
+    "median_halfwidth": 0.00011912840922744009,
+    "coverage": 0.485,
+    "cp_over_method_width": 14.633373356876634
+   },
+   "dr_wald_oracle_q": {
+    "median_halfwidth": 0.00010950625131004696,
+    "coverage": 0.935,
+    "cp_over_method_width": 15.919186975912663
+   },
+   "max_w_observed": 3.3333333333333335,
+   "w_bound": 3.3333333333333335,
+   "d": 12,
+   "p_fail": 0.001,
+   "truth": 0.0010000000000000007,
+   "n": 2000,
+   "reps": 200,
+   "variance_factor_E_p_wf_over_mu": {
+    "good": 3.3089383568017663,
+    "fixed": 3.3080718578513943,
+    "bad": 2.9961587824033833,
+    "oracle": 0.007392701603848895
+   },
+   "n_centers": 16,
+   "regions_hit": 3,
+   "surrogate_term": [
+    6.335472335893783e-05,
+    2.090851582045688e-05
+   ]
+  },
+  {
+   "mc_cp": {
+    "median_halfwidth": 0.0004326764191027856,
+    "coverage": 0.98,
+    "cp_over_method_width": 1.0
+   },
+   "mc_bet": {
+    "median_halfwidth": 0.0006841716049469327,
+    "coverage": 0.98,
+    "cp_over_method_width": 0.6324092025659933
+   },
+   "is_bet": {
+    "median_halfwidth": 0.0012389260963820848,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.34923505152267625
+   },
+   "dr_bet": {
+    "median_halfwidth": 0.0013951297694646926,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.31013345752689536
+   },
+   "dr_bet_wrong_g": {
+    "median_halfwidth": 0.001398166309449766,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.30945990915276805
+   },
+   "dr_bet_bad_centers": {
+    "median_halfwidth": 0.0013750958857220831,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.31465181708080003
+   },
+   "dr_bet_fixed_sd": {
+    "median_halfwidth": 0.0014451518100772444,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.2993985933420093
+   },
+   "dr_bet_oracle_q": {
+    "median_halfwidth": 0.001240562053974087,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.3487745072620312
+   },
+   "is_wald": {
+    "median_halfwidth": 0.0007642224171719122,
+    "coverage": 0.98,
+    "cp_over_method_width": 0.5661655682699698
+   },
+   "dr_wald": {
+    "median_halfwidth": 0.0007304863822162771,
+    "coverage": 0.94,
+    "cp_over_method_width": 0.5923127790418985
+   },
+   "dr_wald_oracle_q": {
+    "median_halfwidth": 3.470745199572877e-05,
+    "coverage": 0.92,
+    "cp_over_method_width": 12.466383851976005
+   },
+   "max_w_observed": 3.3333333333333335,
+   "w_bound": 3.3333333333333335,
+   "d": 12,
+   "p_fail": 0.001,
+   "truth": 0.0010000000000000007,
+   "n": 20000,
+   "reps": 50,
+   "variance_factor_E_p_wf_over_mu": {
+    "good": 3.3089383568017663,
+    "fixed": 3.3080718578513943,
+    "bad": 2.9961587824033833,
+    "oracle": 0.007392701603848895
+   },
+   "n_centers": 16,
+   "regions_hit": 3,
+   "surrogate_term": [
+    6.335472335893783e-05,
+    2.090851582045688e-05
+   ]
+  },
+  {
+   "mc_cp": {
+    "median_halfwidth": 0.00014216362530663481,
+    "coverage": 0.8333333333333334,
+    "cp_over_method_width": 1.0
+   },
+   "mc_bet": {
+    "median_halfwidth": 0.0002536555391224062,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.5604593765170297
+   },
+   "is_bet": {
+    "median_halfwidth": 0.00043523589187786406,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.3266358036173377
+   },
+   "dr_bet": {
+    "median_halfwidth": 0.000494313904715522,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.2875978683797092
+   },
+   "dr_bet_wrong_g": {
+    "median_halfwidth": 0.0005041398850250622,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.28199241823441024
+   },
+   "dr_bet_bad_centers": {
+    "median_halfwidth": 0.0005087587278673489,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.2794323075351777
+   },
+   "dr_bet_fixed_sd": {
+    "median_halfwidth": 0.0005353804274864382,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.2655375841326138
+   },
+   "dr_bet_oracle_q": {
+    "median_halfwidth": 0.00016739318439249032,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.8492796515137724
+   },
+   "is_wald": {
+    "median_halfwidth": 0.0002471568663761419,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.5751959368601135
+   },
+   "dr_wald": {
+    "median_halfwidth": 0.00024270793875896598,
+    "coverage": 1.0,
+    "cp_over_method_width": 0.5857394942808936
+   },
+   "dr_wald_oracle_q": {
+    "median_halfwidth": 1.0975761529425981e-05,
+    "coverage": 1.0,
+    "cp_over_method_width": 12.952506750943394
+   },
+   "max_w_observed": 3.3333333333333335,
+   "w_bound": 3.3333333333333335,
+   "d": 12,
+   "p_fail": 0.001,
+   "truth": 0.0010000000000000007,
+   "n": 200000,
+   "reps": 6,
+   "variance_factor_E_p_wf_over_mu": {
+    "good": 3.3089383568017663,
+    "fixed": 3.3080718578513943,
+    "bad": 2.9961587824033833,
+    "oracle": 0.007392701603848895
+   },
+   "n_centers": 16,
+   "regions_hit": 3,
+   "surrogate_term": [
+    6.335472335893783e-05,
+    2.090851582045688e-05
+   ]
+  }
+ ],
+ "sequential": {
+  "coverage": 1.0,
+  "median_n_used": 7000.0,
+  "reps": 60,
+  "tol": 0.005,
+  "batch": 500,
+  "n_max": 20000,
+  "d": 6,
+  "p_fail": 0.01,
+  "truth": 0.010000000000000004
+ },
+ "seconds": 3755.1
+}

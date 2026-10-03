@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+out/
+.env
+*.key
+media/_jaxcache/
+.pytest_cache/
+.breakpoint-oss-export

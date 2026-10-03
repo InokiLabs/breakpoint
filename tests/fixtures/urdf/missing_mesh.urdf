@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<!--
+  BROKEN FIXTURE (c): a package:// mesh reference that resolves to nothing.
+
+  MuJoCo does not resolve package:// URIs at all (it tries to open the literal string and
+  fails), and a mesh that cannot be found means the link silently loses its collision
+  geometry. load_urdf_model must raise listing the missing paths and the directories it
+  searched, so the fix (pass meshdir=..., or ship the mesh) is obvious.
+-->
+<robot name="missing_mesh_bot">
+  <link name="base">
+    <inertial>
+      <mass value="2.0"/>
+      <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01"/>
+    </inertial>
+    <collision>
+      <geometry><mesh filename="package://nonexistent_pkg/meshes/no_such_mesh.stl"/></geometry>
+    </collision>
+  </link>
+  <link name="arm">
+    <inertial>
+      <mass value="0.5"/>
+      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+    </inertial>
+    <collision>
+      <geometry><box size="0.05 0.05 0.2"/></geometry>
+    </collision>
+  </link>
+  <joint name="shoulder" type="revolute">
+    <parent link="base"/>
+    <child link="arm"/>
+    <origin xyz="0 0 0.1"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.5" upper="1.5" effort="10.0" velocity="10.0"/>
+  </joint>
+</robot>

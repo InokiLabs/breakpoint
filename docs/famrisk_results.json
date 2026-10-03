@@ -1,0 +1,489 @@
+{
+ "label": "SYNTHETIC (planted analytic regions; no physics, no policy)",
+ "command": "PYTHONPATH=. python scripts/bench_famrisk.py --reps 500 --n 2000",
+ "boundary_relaxation": true,
+ "reps": 500,
+ "n_per_family_per_method": 2000,
+ "label_flip_for_cmc": 0.1,
+ "delta": 0.05,
+ "cells": {
+  "m=0.01,r=0.3": {
+   "reps": 500,
+   "given_n": 500,
+   "given_mc": {
+    "coverage": 0.966,
+    "median_width": 0.0054165003849616375,
+    "median_upper": 0.006518218609975257
+   },
+   "given_riskcert": {
+    "coverage": 1.0,
+    "median_width": 0.015419662160715785,
+    "median_upper": 0.015419662160715785
+   },
+   "given_strat": {
+    "coverage": 0.948,
+    "median_width": 0.0004064476651784337,
+    "median_upper": 0.003206163504459842
+   },
+   "cmc_n": 0,
+   "cmc_relaxed_rate": null,
+   "cmc_certified_rate": 0.0,
+   "cmc_exact_dims_rate": null,
+   "cmc_sims_median": 40.0
+  },
+  "m=0.01,r=0.7": {
+   "reps": 500,
+   "given_n": 500,
+   "given_mc": {
+    "coverage": 0.958,
+    "median_width": 0.0077545099665808324,
+    "median_upper": 0.011403247521093778
+   },
+   "given_riskcert": {
+    "coverage": 1.0,
+    "median_width": 0.020794580903563904,
+    "median_upper": 0.020794580903563904
+   },
+   "given_strat": {
+    "coverage": 0.96,
+    "median_width": 0.0004066384024938646,
+    "median_upper": 0.00719538690087068
+   },
+   "cmc_n": 195,
+   "cmc_mc": {
+    "coverage": 0.9948717948717949,
+    "median_width": 0.0018427397934059368,
+    "median_upper": 0.0018427397934059368
+   },
+   "cmc_riskcert": {
+    "coverage": 1.0,
+    "median_width": 0.0,
+    "median_upper": 0.0
+   },
+   "cmc_strat": {
+    "coverage": 1.0,
+    "median_width": 0.0,
+    "median_upper": 0.0
+   },
+   "cmc_relaxed_rate": 0.08205128205128205,
+   "cmc_certified_rate": 0.39,
+   "cmc_exact_dims_rate": 0.37435897435897436,
+   "cmc_sims_median": 352.0
+  },
+  "m=0.01,r=1": {
+   "reps": 500,
+   "given_n": 500,
+   "given_mc": {
+    "coverage": 0.954,
+    "median_width": 0.009283468240838418,
+    "median_upper": 0.015402125783558759
+   },
+   "given_riskcert": {
+    "coverage": 0.998,
+    "median_width": 0.025295176557657686,
+    "median_upper": 0.025486939098455605
+   },
+   "given_strat": {
+    "coverage": 1.0,
+    "median_width": 1.8427397934060383e-05,
+    "median_upper": 0.010000000000000009
+   },
+   "cmc_n": 499,
+   "cmc_mc": {
+    "coverage": 0.9599198396793587,
+    "median_width": 0.008379663927085683,
+    "median_upper": 0.012959068588470107
+   },
+   "cmc_riskcert": {
+    "coverage": 0.9959919839679359,
+    "median_width": 0.0217271043691635,
+    "median_upper": 0.0217271043691635
+   },
+   "cmc_strat": {
+    "coverage": 0.9759519038076152,
+    "median_width": 1.5781792541805922e-05,
+    "median_upper": 0.008564308752803436
+   },
+   "cmc_relaxed_rate": 0.08016032064128256,
+   "cmc_certified_rate": 0.998,
+   "cmc_exact_dims_rate": 1.0,
+   "cmc_sims_median": 470.0
+  },
+  "m=0.001,r=0.3": {
+   "reps": 500,
+   "given_n": 500,
+   "given_mc": {
+    "coverage": 0.974,
+    "median_width": 0.0018427397934059368,
+    "median_upper": 0.0018427397934059368
+   },
+   "given_riskcert": {
+    "coverage": 1.0,
+    "median_width": 0.012262338952719826,
+    "median_upper": 0.012262338952719826
+   },
+   "given_strat": {
+    "coverage": 0.962,
+    "median_width": 4.0625635941665835e-05,
+    "median_upper": 0.00032010752232733376
+   },
+   "cmc_n": 0,
+   "cmc_relaxed_rate": null,
+   "cmc_certified_rate": 0.0,
+   "cmc_exact_dims_rate": null,
+   "cmc_sims_median": 40.0
+  },
+  "m=0.001,r=0.7": {
+   "reps": 500,
+   "given_n": 500,
+   "given_mc": {
+    "coverage": 0.99,
+    "median_width": 0.00276998101078961,
+    "median_upper": 0.002782639834658168
+   },
+   "given_riskcert": {
+    "coverage": 1.0,
+    "median_width": 0.012262369904893163,
+    "median_upper": 0.012262369904893163
+   },
+   "given_strat": {
+    "coverage": 0.952,
+    "median_width": 4.0625635941665835e-05,
+    "median_upper": 0.0007205181136142531
+   },
+   "cmc_n": 197,
+   "cmc_mc": {
+    "coverage": 1.0,
+    "median_width": 0.0018427397934059368,
+    "median_upper": 0.0018427397934059368
+   },
+   "cmc_riskcert": {
+    "coverage": 1.0,
+    "median_width": 0.0,
+    "median_upper": 0.0
+   },
+   "cmc_strat": {
+    "coverage": 0.9949238578680203,
+    "median_width": 0.0,
+    "median_upper": 0.0
+   },
+   "cmc_relaxed_rate": 0.09137055837563451,
+   "cmc_certified_rate": 0.394,
+   "cmc_exact_dims_rate": 0.3553299492385787,
+   "cmc_sims_median": 64.0
+  },
+  "m=0.001,r=1": {
+   "reps": 500,
+   "given_n": 500,
+   "given_mc": {
+    "coverage": 0.97,
+    "median_width": 0.003486500979271837,
+    "median_upper": 0.0036076285698278853
+   },
+   "given_riskcert": {
+    "coverage": 1.0,
+    "median_width": 0.012262514163120375,
+    "median_upper": 0.012262514163120375
+   },
+   "given_strat": {
+    "coverage": 1.0,
+    "median_width": 1.8427397934059515e-06,
+    "median_upper": 0.0010000000000000007
+   },
+   "cmc_n": 499,
+   "cmc_mc": {
+    "coverage": 0.9899799599198397,
+    "median_width": 0.00276998101078961,
+    "median_upper": 0.002782639834658168
+   },
+   "cmc_riskcert": {
+    "coverage": 1.0,
+    "median_width": 0.012262382859163999,
+    "median_upper": 0.012262382859163999
+   },
+   "cmc_strat": {
+    "coverage": 0.9378757515030061,
+    "median_width": 1.4557134137816417e-06,
+    "median_upper": 0.0007899723113326628
+   },
+   "cmc_relaxed_rate": 0.2985971943887776,
+   "cmc_certified_rate": 0.998,
+   "cmc_exact_dims_rate": 1.0,
+   "cmc_sims_median": 508.0
+  },
+  "m=0.0001,r=0.3": {
+   "reps": 500,
+   "given_n": 500,
+   "given_mc": {
+    "coverage": 0.998,
+    "median_width": 0.0018427397934059368,
+    "median_upper": 0.0018427397934059368
+   },
+   "given_riskcert": {
+    "coverage": 1.0,
+    "median_width": 0.012262335704735599,
+    "median_upper": 0.012262335704735599
+   },
+   "given_strat": {
+    "coverage": 0.956,
+    "median_width": 4.065430338361226e-06,
+    "median_upper": 3.208707503041309e-05
+   },
+   "cmc_n": 0,
+   "cmc_relaxed_rate": null,
+   "cmc_certified_rate": 0.0,
+   "cmc_exact_dims_rate": null,
+   "cmc_sims_median": 44.0
+  },
+  "m=0.0001,r=0.7": {
+   "reps": 500,
+   "given_n": 500,
+   "given_mc": {
+    "coverage": 0.994,
+    "median_width": 0.0018427397934059368,
+    "median_upper": 0.0018427397934059368
+   },
+   "given_riskcert": {
+    "coverage": 1.0,
+    "median_width": 0.012262335880295346,
+    "median_upper": 0.012262335880295346
+   },
+   "given_strat": {
+    "coverage": 0.948,
+    "median_width": 4.061604219059518e-06,
+    "median_upper": 7.207629481438871e-05
+   },
+   "cmc_n": 194,
+   "cmc_mc": {
+    "coverage": 1.0,
+    "median_width": 0.0018427397934059368,
+    "median_upper": 0.0018427397934059368
+   },
+   "cmc_riskcert": {
+    "coverage": 1.0,
+    "median_width": 0.0,
+    "median_upper": 0.0
+   },
+   "cmc_strat": {
+    "coverage": 1.0,
+    "median_width": 0.0,
+    "median_upper": 0.0
+   },
+   "cmc_relaxed_rate": 0.05670103092783505,
+   "cmc_certified_rate": 0.388,
+   "cmc_exact_dims_rate": 0.3865979381443299,
+   "cmc_sims_median": 64.0
+  },
+  "m=0.0001,r=1": {
+   "reps": 500,
+   "given_n": 500,
+   "given_mc": {
+    "coverage": 0.978,
+    "median_width": 0.0018427397934059368,
+    "median_upper": 0.0018427397934059368
+   },
+   "given_riskcert": {
+    "coverage": 1.0,
+    "median_width": 0.012262336147229495,
+    "median_upper": 0.012262336147229495
+   },
+   "given_strat": {
+    "coverage": 1.0,
+    "median_width": 1.8427397934059515e-07,
+    "median_upper": 9.999999999999999e-05
+   },
+   "cmc_n": 498,
+   "cmc_mc": {
+    "coverage": 0.9859437751004017,
+    "median_width": 0.0018427397934059368,
+    "median_upper": 0.0018427397934059368
+   },
+   "cmc_riskcert": {
+    "coverage": 1.0,
+    "median_width": 0.01226233587525799,
+    "median_upper": 0.01226233587525799
+   },
+   "cmc_strat": {
+    "coverage": 0.9457831325301205,
+    "median_width": 1.473072802502529e-07,
+    "median_upper": 7.980191885184615e-05
+   },
+   "cmc_relaxed_rate": 0.4678714859437751,
+   "cmc_certified_rate": 0.996,
+   "cmc_exact_dims_rate": 1.0,
+   "cmc_sims_median": 508.0
+  }
+ },
+ "bar1_coverage": {
+  "per_mass": {
+   "0.01": {
+    "given_min_coverage": 0.948,
+    "cmc_min_coverage": 0.9759519038076152,
+    "cmc_cells_with_certified_regions": 2
+   },
+   "0.001": {
+    "given_min_coverage": 0.952,
+    "cmc_min_coverage": 0.9378757515030061,
+    "cmc_cells_with_certified_regions": 2
+   },
+   "0.0001": {
+    "given_min_coverage": 0.948,
+    "cmc_min_coverage": 0.9457831325301205,
+    "cmc_cells_with_certified_regions": 2
+   }
+  },
+  "pass": true
+ },
+ "bar2_tightness": {
+  "per_cell": {
+   "given m=0.001,r=0.3": {
+    "width_ratio_mc_over_strat": 45.359038712696545,
+    "upper_ratio_mc_over_strat": 5.7566275856572915,
+    "width_ratio_riskcert_over_strat": 301.83746465722436
+   },
+   "given m=0.001,r=0.7": {
+    "width_ratio_mc_over_strat": 68.18308062345197,
+    "upper_ratio_mc_over_strat": 3.8619984453963667,
+    "width_ratio_riskcert_over_strat": 301.8382265449492
+   },
+   "given m=0.001,r=1": {
+    "width_ratio_mc_over_strat": 1892.0202362525138,
+    "upper_ratio_mc_over_strat": 3.6076285698278827,
+    "width_ratio_riskcert_over_strat": 6654.501198161824
+   },
+   "cmc m=0.001,r=0.7": {
+    "width_ratio_mc_over_strat": 1.8427397934059368e+297,
+    "upper_ratio_mc_over_strat": 1.8427397934059368e+297,
+    "width_ratio_riskcert_over_strat": 0.0
+   },
+   "cmc m=0.001,r=1": {
+    "width_ratio_mc_over_strat": 1902.8340225249237,
+    "upper_ratio_mc_over_strat": 3.522452362873234,
+    "width_ratio_riskcert_over_strat": 8423.624281450337
+   },
+   "given m=0.0001,r=0.3": {
+    "width_ratio_mc_over_strat": 453.27053719699074,
+    "upper_ratio_mc_over_strat": 57.42934784985334,
+    "width_ratio_riskcert_over_strat": 3016.245436314263
+   },
+   "given m=0.0001,r=0.7": {
+    "width_ratio_mc_over_strat": 453.6975278779455,
+    "upper_ratio_mc_over_strat": 25.566516677242785,
+    "width_ratio_riskcert_over_strat": 3019.0868481850116
+   },
+   "given m=0.0001,r=1": {
+    "width_ratio_mc_over_strat": 9999.99999999992,
+    "upper_ratio_mc_over_strat": 18.42739793405937,
+    "width_ratio_riskcert_over_strat": 66544.04594240033
+   },
+   "cmc m=0.0001,r=0.7": {
+    "width_ratio_mc_over_strat": 1.8427397934059368e+297,
+    "upper_ratio_mc_over_strat": 1.8427397934059368e+297,
+    "width_ratio_riskcert_over_strat": 0.0
+   },
+   "cmc m=0.0001,r=1": {
+    "width_ratio_mc_over_strat": 12509.495730797547,
+    "upper_ratio_mc_over_strat": 23.091422110125194,
+    "width_ratio_riskcert_over_strat": 83243.24401635904
+   }
+  },
+  "min_width_ratio": 45.359038712696545,
+  "pass": true
+ },
+ "bar3_odd": {
+  "excluded": 1500,
+  "excluded_certified": 684,
+  "excluded_labelled_out": 684,
+  "included": 1500,
+  "included_certified": 704,
+  "included_labelled_out": 173,
+  "class_counts": {
+   "in_domain_risk": 0,
+   "in_domain_low": 531,
+   "outside_odd": 857
+  },
+  "accuracy_out_among_certified": 1.0,
+  "accuracy_out_end_to_end": 0.456,
+  "in_odd_mislabelled_out": 173,
+  "included_certified_rate": 0.4693333333333333,
+  "pass": false
+ },
+ "seconds": 973.9,
+ "ablation_no_relax": {
+  "command": "PYTHONPATH=. python scripts/bench_famrisk.py --reps 500 --n 2000 --no-relax",
+  "bar1_coverage": {
+   "per_mass": {
+    "0.01": {
+     "given_min_coverage": 0.948,
+     "cmc_min_coverage": 0.9779559118236473,
+     "cmc_cells_with_certified_regions": 2
+    },
+    "0.001": {
+     "given_min_coverage": 0.952,
+     "cmc_min_coverage": 0.9539078156312625,
+     "cmc_cells_with_certified_regions": 2
+    },
+    "0.0001": {
+     "given_min_coverage": 0.948,
+     "cmc_min_coverage": 0.9658634538152611,
+     "cmc_cells_with_certified_regions": 2
+    }
+   },
+   "pass": true
+  },
+  "bar2_min_width_ratio": 45.359038712696545,
+  "bar3_odd": {
+   "excluded": 1500,
+   "excluded_certified": 684,
+   "excluded_labelled_out": 684,
+   "included": 1500,
+   "included_certified": 704,
+   "included_labelled_out": 571,
+   "class_counts": {
+    "in_domain_risk": 0,
+    "in_domain_low": 133,
+    "outside_odd": 1255
+   },
+   "accuracy_out_among_certified": 1.0,
+   "accuracy_out_end_to_end": 0.456,
+   "in_odd_mislabelled_out": 571,
+   "included_certified_rate": 0.4693333333333333,
+   "pass": false
+  }
+ },
+ "bar3_miss_breakdown_default": {
+  "note": "scripts/bench_famrisk.py odd_experiment, same seeds, tallied by planted in-ODD region; SYNTHETIC",
+  "mass_1e-3_rate_0.7": {
+   "certified": 203,
+   "labelled_out": 169,
+   "exact_dims": 77
+  },
+  "mass_1e-4_rate_1.0": {
+   "certified": 500,
+   "labelled_out": 3,
+   "exact_dims": 500
+  },
+  "mass_1e-2_rate_0.3": {
+   "certified": 1,
+   "labelled_out": 1,
+   "exact_dims": 0
+  }
+ },
+ "cpu_smoke_real_go1": {
+  "label": "CPU smoke, real Go1 policy, reused failures.json (192 worlds); SIMULATION",
+  "family": "high obs dropout prob + high obs bias scale",
+  "class": "in_domain_risk",
+  "region_basis": "relaxed",
+  "mass": 0.07076624411188544,
+  "k": 24,
+  "n": 32,
+  "risk_lo": 0.040050200089526734,
+  "risk_hi": 0.06265529991566712,
+  "riskcert_total": [
+   0.2725784852195515,
+   0.4434059571174913,
+   0.562690513940095
+  ],
+  "unexplained_mass_lower": 0.2099231853038844
+ }
+}

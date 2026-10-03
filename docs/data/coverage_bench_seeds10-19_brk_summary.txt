@@ -1,0 +1,57 @@
+ALL NUMBERS BELOW ARE SYNTHETIC (planted landscapes, CPU).
+50 runs; waves of 16 restarts x pop 128 x 15 gens; audit n=2048; truth n=200000
+
+group      Kconn  Sobs found  chao2 fix16 fix64 unifmass  agree
+hetero-4     3.9   3.9   3.9    4.0   2.4   3.9   0.0997  1.000
+hetero-7     6.4   6.1   6.1    7.3   2.9   6.1   0.0998  1.000
+homog-3      3.0   3.0   3.0    3.0   3.0   3.0   0.0000  1.000
+homog-6      5.7   5.7   5.7    5.7   5.3   5.7   0.0001  1.000
+homog-10     8.9   8.7   8.6    8.7   6.7   8.6   0.0001  1.000
+
+STOP RULES (declared = fired within 4 waves; false = declared while true found < K_conn)
+group     rule    declared false/all false|decl restarts  found
+hetero-4  chao2     100.0%     80.0%      80.0%     27.2   2.70
+hetero-4  brk       100.0%     70.0%      70.0%     38.4   3.00
+hetero-4  chao1     100.0%     90.0%      90.0%     19.2   2.40
+hetero-7  chao2      80.0%     50.0%      62.5%     49.6   5.20
+hetero-7  brk        10.0%     10.0%     100.0%     59.2   5.50
+hetero-7  chao1     100.0%     90.0%      90.0%     30.4   4.10
+homog-3   chao2     100.0%      0.0%       0.0%     17.6   3.00
+homog-3   brk       100.0%      0.0%       0.0%     43.2   3.00
+homog-3   chao1     100.0%      0.0%       0.0%     16.0   3.00
+homog-6   chao2     100.0%     10.0%      10.0%     27.2   5.60
+homog-6   brk         0.0%      0.0%        n/a     64.0   5.70
+homog-6   chao1     100.0%     40.0%      40.0%     19.2   5.30
+homog-10  chao2     100.0%     50.0%      50.0%     41.6   8.30
+homog-10  brk         0.0%      0.0%        n/a     64.0   8.60
+homog-10  chao1     100.0%     60.0%      60.0%     25.6   7.50
+ALL       chao2      96.0%     38.0%      39.6%     32.6   4.96
+ALL       brk        42.0%     16.0%      38.1%     53.8   5.16
+ALL       chao1     100.0%     56.0%      56.0%     22.1   4.46
+
+AUDIT at the brk rule's stopping prefix
+  hetero-4: mean k_fail 205.1/2048, mean k_unseen 0.1, mean CP upper 0.0015, mean true unseen mass 0.0000, runs with true unseen >= 1%: 0/10
+  hetero-7: mean k_fail 205.1/2048, mean k_unseen 0.0, mean CP upper 0.0015, mean true unseen mass 0.0000, runs with true unseen >= 1%: 0/10
+  homog-3: mean k_fail 0.1/2048, mean k_unseen 0.0, mean CP upper 0.0015, mean true unseen mass 0.0000, runs with true unseen >= 1%: 0/10
+  homog-6: mean k_fail 0.2/2048, mean k_unseen 0.0, mean CP upper 0.0015, mean true unseen mass 0.0000, runs with true unseen >= 1%: 0/10
+  homog-10: mean k_fail 0.1/2048, mean k_unseen 0.0, mean CP upper 0.0015, mean true unseen mass 0.0000, runs with true unseen >= 1%: 0/10
+  audit-vs-truth point classification (all runs): {'both': 1, 'audit_only': 0, 'truth_only': 0}
+  COUNTERFACTUAL slab dropped (20 hetero runs): mean k_unseen 205.1/2048 = 0.1001, mean CP upper 0.1117, mean true unseen mass 0.0997
+
+ESTIMATOR at the final prefix (64 restarts)
+  hetero-4: mean|chao2-K| 0.07  mean|Sobs-K| 0.00  CI covers K  80.0%  Sobs/Kconn 1.00  oversplit 0.00
+  hetero-7: mean|chao2-K| 1.23  mean|Sobs-K| 0.30  CI covers K  50.0%  Sobs/Kconn 0.95  oversplit 0.00
+  homog-3: mean|chao2-K| 0.00  mean|Sobs-K| 0.00  CI covers K 100.0%  Sobs/Kconn 1.00  oversplit 0.00
+  homog-6: mean|chao2-K| 0.00  mean|Sobs-K| 0.00  CI covers K 100.0%  Sobs/Kconn 1.00  oversplit 0.00
+  homog-10: mean|chao2-K| 0.45  mean|Sobs-K| 0.40  CI covers K  50.0%  Sobs/Kconn 0.98  oversplit 0.10
+
+PRE-REGISTERED BARS (SYNTHETIC)
+  B1 audit CP upper >= truth: 100.0% of runs -> PASS
+  B2 audit detects >=1% unseen mass: 0/0 -> n/a (no such run)
+  B3 brk false-complete (all runs): 16.0% -> FAIL
+  B4 brk declares on homog-3: 100.0% -> PASS
+  B5 efficiency on homog-3 -> PASS
+  B6 estimator: mean|chao2-K| 0.35 vs mean|Sobs-K| 0.14, CI coverage  76.0% -> FAIL
+  B2' counterfactual audit power (slab dropped): 100.0% -> PASS
+  B7 BRK dominates chao2 on every group: False
+  SHIP (B1 and B3 and B4): False

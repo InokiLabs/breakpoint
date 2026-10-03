@@ -1,0 +1,28 @@
+horizon: 500            # rollout steps per eval (~10s at 50Hz; tune in Phase 2)
+n_eval: 2048            # population / batch size; Phase 2 attempts 4096 if VRAM allows
+generations: 25         # CMA-ES generations
+popsize: 256            # CMA-ES population per generation
+# THROUGHPUT NOTE (measured 2026-09-01): the evaluator is proven at 2048 worlds/batch,
+# so 256 leaves the GPU ~8x underfilled during the CMA-ES phase. Raising popsize with
+# proportionally fewer generations keeps the step budget fixed and cuts wall-clock, BUT
+# it is NOT free: fewer generations means less covariance adaptation in a 16-dim space,
+# which changes what the search FINDS. Raise it behind a search-quality check
+# (scripts/benchmark_search.py: plausible-yield and modes-found must not regress),
+# never as a silent default bump.
+seed: 0
+failure_threshold: 0.5  # failure_score above this counts as a discovered failure
+n_families: 4           # KMeans cluster count for failure families
+thresholds:                # robot-agnostic DEFAULTS; a Target may override per robot.
+  # Per-target overrides (Target.thresholds) merge OVER these in run_pipeline (target
+  # keys win). trunk_height_min is the one robot-scale-specific value: it suits a
+  # knee-high Go1 here, but e.g. the g1 humanoid raises it to 0.40 (pelvis stands
+  # ~0.79 m, so 0.18 would never trigger). go1/barkour declare no override.
+  trunk_height_min: 0.18   # below = fallen (Go1 nominal trunk ~0.28)
+  up_proj_min: 0.5         # trunk up-axis world-z; below = tipped/fallen (nominal ~1.0)
+  tracking_err_max: 0.5    # mean velocity-tracking error above this = tracking loss
+  ang_vel_max: 8.0         # rad/s base angular-velocity instability threshold
+atlas:                     # Upgrade #4: MAP-Elites failure atlas (BP_SEARCH=atlas)
+  n_ttf_bins: 8            # time-to-failure axis bins (mode axis = 4 FAILURE_MODES)
+  iterations: 20           # MAP-Elites iterations after the uniform seed batch
+  batch_size: 256          # envs evaluated per seed/iteration batch (GPU-parallel)
+  sigma: 0.15              # Gaussian perturbation std as a fraction of each dim's span

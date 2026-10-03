@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<!--
+  FIXED-BASE fixture: a 2-dof arm bolted to the table.
+
+  Exercises floating_base=False - no freejoint is injected, MuJoCo fuses the root link
+  into worldbody (so the base mass is legitimately absent from the model total), and the
+  observation drops the three base blocks. make_urdf_target REFUSES this: the legged
+  objective reads the base pose positionally, so a fixed-base robot needs a manipulation
+  objective, not the legged one.
+-->
+<robot name="mini_arm">
+  <link name="base">
+    <inertial>
+      <origin xyz="0 0 0.025"/>
+      <mass value="3.0"/>
+      <inertia ixx="0.005" ixy="0" ixz="0" iyy="0.005" iyz="0" izz="0.008"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 0.025"/>
+      <geometry><box size="0.15 0.15 0.05"/></geometry>
+    </collision>
+  </link>
+
+  <link name="upper">
+    <inertial>
+      <origin xyz="0 0 0.12"/>
+      <mass value="1.2"/>
+      <inertia ixx="0.006" ixy="0" ixz="0" iyy="0.006" iyz="0" izz="0.0005"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 0.12"/>
+      <geometry><box size="0.05 0.05 0.24"/></geometry>
+    </collision>
+  </link>
+
+  <link name="fore">
+    <inertial>
+      <origin xyz="0 0 0.10"/>
+      <mass value="0.8"/>
+      <inertia ixx="0.003" ixy="0" ixz="0" iyy="0.003" iyz="0" izz="0.0003"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 0.10"/>
+      <geometry><box size="0.04 0.04 0.20"/></geometry>
+    </collision>
+  </link>
+
+  <joint name="shoulder" type="revolute">
+    <parent link="base"/>
+    <child link="upper"/>
+    <origin xyz="0 0 0.05"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-2.0" upper="2.0" effort="80.0" velocity="3.0"/>
+  </joint>
+
+  <joint name="elbow" type="revolute">
+    <parent link="upper"/>
+    <child link="fore"/>
+    <origin xyz="0 0 0.24"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-2.4" upper="0.0" effort="40.0" velocity="3.0"/>
+  </joint>
+</robot>

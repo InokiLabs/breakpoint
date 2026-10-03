@@ -1,0 +1,220 @@
+{
+  "schema": "breakpoint.report/v1",
+  "kind": "rating",
+  "battery": {
+    "id": "legged-quadruped-v1",
+    "sha256": "0857eb402abf4e4cc647558a10cd070a84d9913131863494b60f938cd4073074"
+  },
+  "engine": {
+    "version": "0.1.0",
+    "commit": "5ac484a5bd515108191c5c207fbd4762b61a016e"
+  },
+  "robot": "go1",
+  "policy": {
+    "name": "breakpoint-demo-go1",
+    "source": "bundled with breakpoint-mjx",
+    "sha256": "b442aaa99d0342314d266722a7b05c6fb0a270bb8d4ca7b9dec5fc08b47e726a"
+  },
+  "run": {
+    "date": "2026-10-03T18:02:24+00:00",
+    "backend": "mjx-cpu",
+    "seeds": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "runner": "self",
+    "budget": "smoke",
+    "horizon": 150
+  },
+  "cells": [
+    {
+      "id": "nominal",
+      "n": 4,
+      "falls": 0,
+      "fall_rate": 0.0,
+      "ci95": [
+        0.0,
+        0.6024
+      ],
+      "passed": true,
+      "sim_invalid": 0
+    },
+    {
+      "id": "low-friction",
+      "n": 4,
+      "falls": 0,
+      "fall_rate": 0.0,
+      "ci95": [
+        0.0,
+        0.6024
+      ],
+      "passed": true,
+      "sim_invalid": 0
+    },
+    {
+      "id": "latency-20ms",
+      "n": 4,
+      "falls": 0,
+      "fall_rate": 0.0,
+      "ci95": [
+        0.0,
+        0.6024
+      ],
+      "passed": true,
+      "sim_invalid": 0
+    },
+    {
+      "id": "latency-40ms",
+      "n": 4,
+      "falls": 3,
+      "fall_rate": 0.75,
+      "ci95": [
+        0.1941,
+        0.9937
+      ],
+      "passed": false,
+      "sim_invalid": 0
+    },
+    {
+      "id": "obs-noise",
+      "n": 4,
+      "falls": 0,
+      "fall_rate": 0.0,
+      "ci95": [
+        0.0,
+        0.6024
+      ],
+      "passed": true,
+      "sim_invalid": 0
+    },
+    {
+      "id": "obs-dropout",
+      "n": 4,
+      "falls": 0,
+      "fall_rate": 0.0,
+      "ci95": [
+        0.0,
+        0.6024
+      ],
+      "passed": true,
+      "sim_invalid": 0
+    },
+    {
+      "id": "obs-bias",
+      "n": 4,
+      "falls": 0,
+      "fall_rate": 0.0,
+      "ci95": [
+        0.0,
+        0.6024
+      ],
+      "passed": true,
+      "sim_invalid": 0
+    },
+    {
+      "id": "lag-dropout",
+      "n": 4,
+      "falls": 4,
+      "fall_rate": 1.0,
+      "ci95": [
+        0.3976,
+        1.0
+      ],
+      "passed": false,
+      "sim_invalid": 0
+    },
+    {
+      "id": "payload-2kg",
+      "n": 4,
+      "falls": 0,
+      "fall_rate": 0.0,
+      "ci95": [
+        0.0,
+        0.6024
+      ],
+      "passed": true,
+      "sim_invalid": 0
+    },
+    {
+      "id": "payload-offcenter",
+      "n": 4,
+      "falls": 0,
+      "fall_rate": 0.0,
+      "ci95": [
+        0.0,
+        0.6024
+      ],
+      "passed": true,
+      "sim_invalid": 0
+    },
+    {
+      "id": "weak-actuators",
+      "n": 4,
+      "falls": 0,
+      "fall_rate": 0.0,
+      "ci95": [
+        0.0,
+        0.6024
+      ],
+      "passed": true,
+      "sim_invalid": 0
+    },
+    {
+      "id": "push-light",
+      "n": 4,
+      "falls": 0,
+      "fall_rate": 0.0,
+      "ci95": [
+        0.0,
+        0.6024
+      ],
+      "passed": true,
+      "sim_invalid": 0
+    },
+    {
+      "id": "push-firm",
+      "n": 4,
+      "falls": 0,
+      "fall_rate": 0.0,
+      "ci95": [
+        0.0,
+        0.6024
+      ],
+      "passed": true,
+      "sim_invalid": 0
+    },
+    {
+      "id": "tilt-pos-5deg",
+      "n": 4,
+      "falls": 0,
+      "fall_rate": 0.0,
+      "ci95": [
+        0.0,
+        0.6024
+      ],
+      "passed": true,
+      "sim_invalid": 0
+    },
+    {
+      "id": "tilt-neg-5deg",
+      "n": 4,
+      "falls": 0,
+      "fall_rate": 0.0,
+      "ci95": [
+        0.0,
+        0.6024
+      ],
+      "passed": true,
+      "sim_invalid": 0
+    }
+  ],
+  "summary": {
+    "cells_passed": 13,
+    "cells_total": 15,
+    "label": "SMOKE PREVIEW, not a rating: 13/15 cells passed (4 seeds, 150 steps)"
+  },
+  "gate": null,
+  "attestation": null
+}

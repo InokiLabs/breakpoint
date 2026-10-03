@@ -1,0 +1,26 @@
+dims:
+  friction_floor: {kind: model, bounds: [0.15, 1.20], nominal: 0.80, plausible: [0.40, 1.00]}
+  torso_mass_add_kg: {kind: model, bounds: [-1.0, 6.0], nominal: 0.0, plausible: [-1.0, 2.0]}
+  com_offset_x_m: {kind: model, bounds: [-0.08, 0.08], nominal: 0.0, plausible: [-0.05, 0.05]}
+  com_offset_y_m: {kind: model, bounds: [-0.08, 0.08], nominal: 0.0, plausible: [-0.05, 0.05]}
+  kp_scale: {kind: model, bounds: [0.50, 1.50], nominal: 1.0, plausible: [0.85, 1.15]}
+  kd_scale: {kind: model, bounds: [0.50, 1.50], nominal: 1.0, plausible: [0.85, 1.15]}
+  com_offset_z_m: {kind: model, bounds: [-0.05, 0.05], nominal: 0.0, plausible: [-0.03, 0.03]}
+  joint_frictionloss_scale: {kind: model, bounds: [0.5, 3.0], nominal: 1.0, plausible: [0.9, 1.3]}
+  joint_armature_scale: {kind: model, bounds: [0.8, 2.0], nominal: 1.0, plausible: [1.0, 1.1]}
+  obs_noise_scale: {kind: rollout, bounds: [0.0, 0.10], nominal: 0.0, plausible: [0.0, 0.04]}
+  latency_steps: {kind: rollout, bounds: [0.0, 4.0], nominal: 0.0, plausible: [0.0, 2.0]}
+  # Tier-3 richer failure axes (T6). obs_* + push_* are ROLLOUT dims (applied in the
+  # shared rollout_one); floor_slope_rad is a MODEL dim (tilts the floor geom_quat).
+  # PERCEPTION: per-step channel dropout + a per-episode constant sensor bias.
+  obs_dropout_prob: {kind: rollout, bounds: [0.0, 0.50], nominal: 0.0, plausible: [0.0, 0.20]}
+  obs_bias_scale: {kind: rollout, bounds: [0.0, 0.10], nominal: 0.0, plausible: [0.0, 0.04]}
+  # TIMING/DYNAMICS: a gait-timed horizontal velocity impulse (push_mag m/s) applied at
+  # step round(push_step_frac*(H-1)); push_step_frac only matters when push_mag > 0.
+  push_mag: {kind: rollout, bounds: [0.0, 2.0], nominal: 0.0, plausible: [0.0, 1.0]}
+  # plausible spans the full range: a push can realistically land at any point in the gait,
+  # so timing carries no sim-to-real penalty (push_mag governs plausibility); this also
+  # keeps the all-nominal theta fully transferable (nominal 0.0 inside plausible).
+  push_step_frac: {kind: rollout, bounds: [0.0, 1.0], nominal: 0.0, plausible: [0.0, 1.0]}
+  # GEOMETRY: tilt the ground plane by pitching the floor geom (radians, ~+-11 deg).
+  floor_slope_rad: {kind: model, bounds: [-0.20, 0.20], nominal: 0.0, plausible: [-0.10, 0.10]}

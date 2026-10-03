@@ -1,0 +1,79 @@
+# BreakPoint Crash Rating battery: legged-quadruped-v1
+#
+# A FIXED, versioned list of named conditions that every quadruped policy runs identically,
+# so two ratings on this battery are comparable (same cells, same seeds, same horizon, same
+# fall rule). It is the opposite of a search: nothing here adapts to the policy.
+#
+# Rules for every cell value (enforced by breakpoint_mjx/ratings.py at load time):
+#   * the dim must exist in the robot's theta space (configs/<robot>/theta_space.yaml);
+#   * the value must lie inside that dim's hard `bounds` AND inside its `plausible` band
+#     (the per-dim deployment band that plausibility.py / transfer.py score against), so no
+#     cell is an "ice rink plus broken IMU" extreme; every cell has transfer likelihood 1.0;
+#   * dims a cell does not list stay at the theta space's nominal value.
+# Applies to: go1, barkour (identical theta spaces; nominal friction 0.80, trunk ~0.28 m).
+#
+# Changing ANY byte of a cell, the seeds, the horizon or a rule is a NEW battery version
+# (legged-quadruped-v2); the report carries this file's sha256 so a silent edit is visible.
+battery: legged-quadruped-v1
+version: 1
+robot_class: legged-quadruped
+horizon: 500                        # control steps (10 s at the 50 Hz Go1 control rate)
+seeds: [0, 1, 2, 3, 4, 5, 6, 7]     # fixed; every cell runs every seed
+# ratings.py parses BOTH numbers out of this sentence and uses them as the fall thresholds
+# (they match configs/search.yaml trunk_height_min / up_proj_min for go1 and barkour).
+fall_rule: "trunk height above the floor (floor-relative) < 0.18 m, or trunk up-axis z-projection < 0.5 (tipped over)"
+cells:
+  # Reference: every dim at nominal. A policy that falls here is broken, not fragile.
+  - id: nominal
+    theta: {}
+  # CONTACT. Wet / dusty indoor floor: friction 0.45 is near the low edge of the plausible
+  # band [0.40, 1.00] (nominal 0.80).
+  - id: low-friction
+    theta: {friction_floor: 0.45}
+  # SENSING / TIMING. One control step (20 ms) of actuation latency, a common real-robot
+  # pipeline delay (comms + inference).
+  - id: latency-20ms
+    theta: {latency_steps: 1}
+  # Two control steps (40 ms), the top of the plausible latency band [0, 2].
+  - id: latency-40ms
+    theta: {latency_steps: 2}
+  # Gaussian observation noise at 3% scale (plausible band [0, 0.04]): a noisy IMU/encoders.
+  - id: obs-noise
+    theta: {obs_noise_scale: 0.03}
+  # 10% per-step observation channel dropout (plausible [0, 0.20]): flaky sensor bus.
+  - id: obs-dropout
+    theta: {obs_dropout_prob: 0.10}
+  # Constant per-episode sensor bias at 3% scale (plausible [0, 0.04]): miscalibration.
+  - id: obs-bias
+    theta: {obs_bias_scale: 0.03}
+  # Compound sensing fault: 40 ms latency plus 20% dropout, both at their plausible edge.
+  # (The contract's worked example; the latency+dropout pair is the engine's most-found
+  # real failure family.)
+  - id: lag-dropout
+    theta: {latency_steps: 2, obs_dropout_prob: 0.20}
+  # MORPHOLOGY. A 2 kg payload on the trunk (~16% of a ~12 kg Go1), the top of the
+  # plausible payload band [-1, 2] kg.
+  - id: payload-2kg
+    theta: {torso_mass_add_kg: 2.0}
+  # An off-centre 1.5 kg payload: mass plus a 3 cm forward CoM shift (plausible +-5 cm).
+  - id: payload-offcenter
+    theta: {torso_mass_add_kg: 1.5, com_offset_x_m: 0.03}
+  # Weak actuators: PD gains at 85% (the low edge of the plausible [0.85, 1.15] band), e.g.
+  # a hot motor or a mis-tuned controller.
+  - id: weak-actuators
+    theta: {kp_scale: 0.85, kd_scale: 0.85}
+  # PUSHES. A 0.5 m/s horizontal velocity impulse at mid-episode, random horizontal
+  # direction per seed (a bump from a person or a cart). Plausible push band [0, 1.0] m/s.
+  - id: push-light
+    theta: {push_mag: 0.5, push_step_frac: 0.5}
+  # A 0.9 m/s impulse at mid-episode: a firm shove, still inside the plausible band.
+  - id: push-firm
+    theta: {push_mag: 0.9, push_step_frac: 0.5}
+  # TERRAIN. Floor pitched +5 deg (0.087 rad) about world y; plausible band +-0.10 rad.
+  # Whether the robot climbs or descends depends on its commanded heading.
+  - id: tilt-pos-5deg
+    theta: {floor_slope_rad: 0.087}
+  # Floor pitched -5 deg about world y.
+  - id: tilt-neg-5deg
+    theta: {floor_slope_rad: -0.087}
+pass_rule: "a cell passes if fall rate <= 1/8 across seeds"

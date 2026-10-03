@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<!--
+  BROKEN FIXTURE (b): real collision geometry, but every link declares mass 0.
+
+  A massless robot has no dynamics worth reporting. MuJoCo itself raises here only once a
+  moving body is involved ("mass and inertia of moving bodies must be larger than
+  mjMINVAL"), with no mention of the URDF; load_urdf_model must reject it first, naming the
+  actual problem.
+-->
+<robot name="zero_mass_bot">
+  <link name="base">
+    <inertial>
+      <mass value="0.0"/>
+      <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+    </inertial>
+    <collision>
+      <geometry><box size="0.2 0.2 0.1"/></geometry>
+    </collision>
+  </link>
+  <link name="arm">
+    <inertial>
+      <mass value="0.0"/>
+      <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+    </inertial>
+    <collision>
+      <geometry><box size="0.05 0.05 0.2"/></geometry>
+    </collision>
+  </link>
+  <joint name="shoulder" type="revolute">
+    <parent link="base"/>
+    <child link="arm"/>
+    <origin xyz="0 0 0.1"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.5" upper="1.5" effort="10.0" velocity="10.0"/>
+  </joint>
+</robot>

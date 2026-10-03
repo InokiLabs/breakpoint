@@ -1,0 +1,28 @@
+# JAX + CUDA 12 is installed separately on Colab (see bootstrap cell) because the
+# wheel index URL differs. These are the rest of the stack, version-pinned.
+#
+# flax has no direct pin here -- it's pulled in transitively by brax's bare
+# "flax" dependency. flax>=0.12.7 raised its own jax floor to >=0.10.0, which
+# silently upgrades jax/jaxlib past this repo's jax[cuda12]<0.9 ceiling
+# (needed because brax 0.14 still calls jax.device_put_replicated), orphaning
+# jax-cuda12-plugin at its older pinned version. jaxlib then detects that
+# mismatch and disables the plugin outright, so every CUDA linear-algebra op
+# fails with "No FFI handler registered for ..._ffi" -- not a cusolver/cublas
+# version issue, just jax silently drifting out from under its own plugin.
+# 0.12.6 is the newest flax release still floored at jax>=0.8.1 (compatible
+# with <0.9), and it satisfies every other package's own floor on flax here
+# (evosax wants >=0.10.0, qdax wants >=0.8.5).
+flax==0.12.6
+mujoco-mjx>=3.2.0
+playground>=0.0.4
+brax>=0.10.5
+evosax>=0.1.6
+qdax>=0.4.0
+mediapy>=1.2.0
+imageio[ffmpeg]>=2.34.0
+scikit-learn>=1.4.0
+numpy>=1.26.0
+pyyaml>=6.0
+httpx>=0.27.0
+anthropic>=0.69.0
+pytest>=8.0.0

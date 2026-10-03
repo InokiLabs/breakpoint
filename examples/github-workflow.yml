@@ -1,0 +1,62 @@
+# Copy to .github/workflows/breakpoint-gate.yml in YOUR policy repo.
+#
+# On every pull request that touches a checkpoint, test the candidate against the
+# baseline on the same fixed conditions and seeds. The job fails when the candidate falls
+# in a condition the baseline survived. Everything runs on your runner; weights never
+# leave it (only per-cell fall counts and checkpoint sha256 hashes are reported).
+#
+# Optional secret (Settings > Secrets and variables > Actions):
+#   BREAKPOINT_API_KEY     a BreakPoint Web project api key, only if you upload reports
+#                          to a dashboard; leave it unset to keep everything local.
+#
+# Pin `@<ref>` to a release tag or commit sha.
+
+name: breakpoint-gate
+
+on:
+  pull_request:
+    paths:
+      - "checkpoints/**"
+
+jobs:
+  # GitHub-hosted runners are CPU-only: they fit `budget: smoke` (2 seeds, horizon <= 150,
+  # a few minutes). A smoke gate is a screen for gross regressions, not a rating.
+  gate-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true            # if checkpoints are stored with git LFS
+
+      - name: BreakPoint gate
+        uses: InokiLabs/breakpoint@main
+        with:
+          robot: go1
+          baseline: checkpoints/prod.pkl
+          candidate: checkpoints/candidate.pkl
+          budget: smoke
+          tolerance: "0"
+          python-version: "3.11"
+          engine-ref: main
+          api-key: ${{ secrets.BREAKPOINT_API_KEY }}   # optional; empty skips upload
+          project: my-quadruped                         # optional; dashboard slug
+
+  # A real gate runs the battery as declared (all seeds, full horizon). That needs a GPU,
+  # which means a self-hosted runner you register with these labels. Enable this job
+  # (and drop gate-smoke) once the runner exists.
+  gate-standard:
+    if: false   # remove once a self-hosted GPU runner is registered
+    runs-on: [self-hosted, linux, x64, gpu]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: InokiLabs/breakpoint@main
+        with:
+          robot: go1
+          baseline: checkpoints/prod.pkl
+          candidate: checkpoints/candidate.pkl
+          budget: standard
+      # Note: `pip install breakpoint-mjx[sim]` installs CPU jax. On the GPU runner, install
+      # the CUDA build first (e.g. `pip install "jax[cuda12]"`) or bake it into the runner
+      # image, or the gate silently runs on CPU (the report's run.backend says which).

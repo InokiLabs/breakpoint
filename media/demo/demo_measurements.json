@@ -1,0 +1,291 @@
+{
+ "target": "go1",
+ "hardened_run": "retrain_bp_wide",
+ "horizon": 500,
+ "control_dt": 0.02,
+ "fps": 50,
+ "fall_threshold_m": 0.18,
+ "seed": 0,
+ "resolution": "1920x1080",
+ "grayscale": true,
+ "camera": {
+  "type": "mjCAMERA_TRACKING",
+  "track_body": "trunk",
+  "distance": 2.1,
+  "azimuth": 130.0,
+  "elevation": -16.0,
+  "why_not_model_track_cam": "the model's own 'track' camera is TRACKCOM with a fixed offset and loses a fallen robot"
+ },
+ "render_notes": {
+  "perturbed_fields_synced_to_render_model": true,
+  "floor_alpha": 0.45,
+  "collision_model": "Go1JoystickFlatTerrain gives collision geoms ONLY to the 4 foot spheres; all trunk/thigh/calf geoms are contype=0. After a fall the trunk therefore passes through the ground plane. This is a property of the training/scoring env, not of this renderer.",
+  "fall_criterion": "engine's own trunk_height = qpos[2] < fall_threshold_m"
+ },
+ "backend": "[CpuDevice(id=0)]",
+ "n_conditions": 4,
+ "families_source": "media/dl/families.json",
+ "conditions": [
+  {
+   "index": 0,
+   "family": "payload overload",
+   "severity": "critical",
+   "mean_failure_score": 1.1205759675688431,
+   "margin": "stable until latency_steps > 1.49 AND obs_dropout_prob > 0.121 AND floor_slope_rad < -0.0477",
+   "gating_axes": "latency_steps=1.859   obs_dropout_prob=0.134   floor_slope_rad=-0.06811",
+   "representative_theta": {
+    "com_offset_x_m": -0.037627771496772766,
+    "com_offset_y_m": -0.018971800804138184,
+    "com_offset_z_m": -0.01007891446352005,
+    "floor_slope_rad": -0.06810757517814636,
+    "friction_floor": 0.7765892744064331,
+    "joint_armature_scale": 1.061509370803833,
+    "joint_frictionloss_scale": 0.9648414850234985,
+    "kd_scale": 1.0849899053573608,
+    "kp_scale": 1.079338788986206,
+    "latency_steps": 1.859105110168457,
+    "obs_bias_scale": 0.0050419955514371395,
+    "obs_dropout_prob": 0.13395683467388153,
+    "obs_noise_scale": 0.004645755048841238,
+    "push_mag": 0.1948455274105072,
+    "push_step_frac": 0.47139352560043335,
+    "torso_mass_add_kg": -0.004993796348571777
+   },
+   "frozen": {
+    "fell": true,
+    "fall_step": 102,
+    "fall_time_s": 2.04,
+    "min_trunk_height_m": -0.3263,
+    "final_trunk_height_m": -0.2757,
+    "mean_trunk_height_m": -0.1508,
+    "min_up_proj": -0.9994,
+    "final_up_proj": -0.9931,
+    "up_proj_at_fall": 0.1771,
+    "start_clearance_m": 0.3043,
+    "min_clearance_m": -0.3413,
+    "final_clearance_m": -0.2762
+   },
+   "hardened": {
+    "fell": false,
+    "fall_step": null,
+    "fall_time_s": null,
+    "min_trunk_height_m": 0.2219,
+    "final_trunk_height_m": 0.2307,
+    "mean_trunk_height_m": 0.2526,
+    "min_up_proj": 0.9805,
+    "final_up_proj": 0.9992,
+    "up_proj_at_fall": null,
+    "start_clearance_m": 0.3043,
+    "min_clearance_m": 0.2778,
+    "final_clearance_m": 0.2962
+   },
+   "demonstrates_claim": true,
+   "floor_slope_deg": -3.902,
+   "upright_whole_episode": {
+    "frozen": false,
+    "hardened": true
+   },
+   "stood_off_the_floor_whole_episode": {
+    "frozen": false,
+    "hardened": true
+   }
+  },
+  {
+   "index": 1,
+   "family": "clean-sensor edge case",
+   "severity": "critical",
+   "mean_failure_score": 1.0908155286348882,
+   "margin": "stable until latency_steps > 1.47 AND obs_dropout_prob > 0.153",
+   "gating_axes": "latency_steps=1.839   obs_dropout_prob=0.1702",
+   "representative_theta": {
+    "com_offset_x_m": -0.03171887621283531,
+    "com_offset_y_m": -0.021975550800561905,
+    "com_offset_z_m": -0.00021956861019134521,
+    "floor_slope_rad": -0.008974194526672363,
+    "friction_floor": 0.6295979619026184,
+    "joint_armature_scale": 1.0604695081710815,
+    "joint_frictionloss_scale": 1.0387108325958252,
+    "kd_scale": 0.9812674522399902,
+    "kp_scale": 1.0574191808700562,
+    "latency_steps": 1.8387882709503174,
+    "obs_bias_scale": 0.001412204816006124,
+    "obs_dropout_prob": 0.17022721469402313,
+    "obs_noise_scale": 0.01043866015970707,
+    "push_mag": 0.30965083837509155,
+    "push_step_frac": 0.12687724828720093,
+    "torso_mass_add_kg": 0.2258824110031128
+   },
+   "frozen": {
+    "fell": true,
+    "fall_step": 62,
+    "fall_time_s": 1.24,
+    "min_trunk_height_m": -0.3447,
+    "final_trunk_height_m": -0.2642,
+    "mean_trunk_height_m": -0.1823,
+    "min_up_proj": -1.0,
+    "final_up_proj": -0.9998,
+    "up_proj_at_fall": 0.4186,
+    "start_clearance_m": 0.2817,
+    "min_clearance_m": -0.3491,
+    "final_clearance_m": -0.275
+   },
+   "hardened": {
+    "fell": false,
+    "fall_step": null,
+    "fall_time_s": null,
+    "min_trunk_height_m": 0.2747,
+    "final_trunk_height_m": 0.2804,
+    "mean_trunk_height_m": 0.2923,
+    "min_up_proj": 0.9957,
+    "final_up_proj": 0.9985,
+    "up_proj_at_fall": null,
+    "start_clearance_m": 0.2817,
+    "min_clearance_m": 0.278,
+    "final_clearance_m": 0.2836
+   },
+   "demonstrates_claim": true,
+   "floor_slope_deg": -0.514,
+   "upright_whole_episode": {
+    "frozen": false,
+    "hardened": true
+   },
+   "stood_off_the_floor_whole_episode": {
+    "frozen": false,
+    "hardened": true
+   }
+  },
+  {
+   "index": 2,
+   "family": "underweight trunk",
+   "severity": "critical",
+   "mean_failure_score": 0.994918594076191,
+   "margin": "stable until latency_steps > 1.47 AND floor_slope_rad < -0.0328",
+   "gating_axes": "latency_steps=1.633   floor_slope_rad=-0.0468",
+   "representative_theta": {
+    "com_offset_x_m": 0.002845466136932373,
+    "com_offset_y_m": -0.023100104182958603,
+    "com_offset_z_m": 0.0016795992851257324,
+    "floor_slope_rad": -0.04680405557155609,
+    "friction_floor": 0.762810230255127,
+    "joint_armature_scale": 1.0211892127990723,
+    "joint_frictionloss_scale": 1.0634820461273193,
+    "kd_scale": 0.9220742583274841,
+    "kp_scale": 1.0402990579605103,
+    "latency_steps": 1.633318543434143,
+    "obs_bias_scale": 0.003953408915549517,
+    "obs_dropout_prob": 0.10553009063005447,
+    "obs_noise_scale": 0.007236321922391653,
+    "push_mag": 0.5828075408935547,
+    "push_step_frac": 0.16672886908054352,
+    "torso_mass_add_kg": 0.17587196826934814
+   },
+   "frozen": {
+    "fell": true,
+    "fall_step": 132,
+    "fall_time_s": 2.64,
+    "min_trunk_height_m": -0.2624,
+    "final_trunk_height_m": -0.1969,
+    "mean_trunk_height_m": -0.0579,
+    "min_up_proj": -1.0,
+    "final_up_proj": -0.9983,
+    "up_proj_at_fall": -0.2336,
+    "start_clearance_m": 0.2662,
+    "min_clearance_m": -0.3286,
+    "final_clearance_m": -0.2695
+   },
+   "hardened": {
+    "fell": false,
+    "fall_step": null,
+    "fall_time_s": null,
+    "min_trunk_height_m": 0.278,
+    "final_trunk_height_m": 0.3087,
+    "mean_trunk_height_m": 0.3093,
+    "min_up_proj": 0.979,
+    "final_up_proj": 0.9975,
+    "up_proj_at_fall": null,
+    "start_clearance_m": 0.2662,
+    "min_clearance_m": 0.2662,
+    "final_clearance_m": 0.2924
+   },
+   "demonstrates_claim": true,
+   "floor_slope_deg": -2.682,
+   "upright_whole_episode": {
+    "frozen": false,
+    "hardened": true
+   },
+   "stood_off_the_floor_whole_episode": {
+    "frozen": false,
+    "hardened": true
+   }
+  },
+  {
+   "index": 3,
+   "family": "low-latency edge case",
+   "severity": "critical",
+   "mean_failure_score": 0.9000412407332303,
+   "margin": "stable until obs_noise_scale > 0.0258 AND obs_dropout_prob > 0.121 AND floor_slope_rad > 0.0879",
+   "gating_axes": "obs_noise_scale=0.03691   obs_dropout_prob=0.1724   floor_slope_rad=0.1758",
+   "representative_theta": {
+    "com_offset_x_m": 0.0437859445810318,
+    "com_offset_y_m": 0.03900635987520218,
+    "com_offset_z_m": 0.018311727792024612,
+    "floor_slope_rad": 0.1758085936307907,
+    "friction_floor": 0.5868179798126221,
+    "joint_armature_scale": 1.0593352317810059,
+    "joint_frictionloss_scale": 2.5521669387817383,
+    "kd_scale": 1.3553619384765625,
+    "kp_scale": 0.7308536171913147,
+    "latency_steps": 1.1537740230560303,
+    "obs_bias_scale": 0.013477831147611141,
+    "obs_dropout_prob": 0.17238497734069824,
+    "obs_noise_scale": 0.03691314533352852,
+    "push_mag": 0.43438583612442017,
+    "push_step_frac": 0.21820911765098572,
+    "torso_mass_add_kg": 1.1701014041900635
+   },
+   "frozen": {
+    "fell": true,
+    "fall_step": 20,
+    "fall_time_s": 0.4,
+    "min_trunk_height_m": -0.522,
+    "final_trunk_height_m": -0.522,
+    "mean_trunk_height_m": -0.4529,
+    "min_up_proj": -0.9996,
+    "final_up_proj": -0.9973,
+    "up_proj_at_fall": 0.92,
+    "start_clearance_m": 0.3348,
+    "min_clearance_m": -0.3375,
+    "final_clearance_m": -0.2812
+   },
+   "hardened": {
+    "fell": true,
+    "fall_step": 124,
+    "fall_time_s": 2.48,
+    "min_trunk_height_m": 0.1566,
+    "final_trunk_height_m": 0.1571,
+    "mean_trunk_height_m": 0.1774,
+    "min_up_proj": 0.9552,
+    "final_up_proj": 0.9893,
+    "up_proj_at_fall": 0.9693,
+    "start_clearance_m": 0.3348,
+    "min_clearance_m": 0.2601,
+    "final_clearance_m": 0.2622
+   },
+   "demonstrates_claim": false,
+   "floor_slope_deg": 10.073,
+   "upright_whole_episode": {
+    "frozen": false,
+    "hardened": true
+   },
+   "stood_off_the_floor_whole_episode": {
+    "frozen": false,
+    "hardened": true
+   }
+  }
+ ],
+ "metrics": {
+  "trunk_height_m": "qpos[2], absolute world z -- the engine's own fall variable",
+  "up_proj": "trunk R[2,2]: +1 upright, 0 on its side, -1 inverted",
+  "clearance_m": "perpendicular distance from the trunk origin to the TILTED floor plane; slope-invariant, so it separates a real fall from a robot walking downhill"
+ }
+}

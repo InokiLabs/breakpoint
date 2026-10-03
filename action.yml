@@ -1,0 +1,136 @@
+name: "BreakPoint policy gate"
+description: >-
+  pytest for robot policies: evaluate a candidate checkpoint against the baseline on the
+  same fixed conditions and seeds, and fail the build when the candidate falls where the
+  baseline survived. Runs entirely on your runner; weights never leave it.
+branding:
+  icon: "shield"
+  color: "orange"
+
+inputs:
+  robot:
+    description: "Registered BreakPoint target (e.g. go1)."
+    required: false
+    default: "go1"
+  baseline:
+    description: "Path to the baseline checkpoint on the runner (the policy in production)."
+    required: true
+  candidate:
+    description: "Path to the candidate checkpoint on the runner (the policy under test)."
+    required: true
+  battery:
+    description: "Battery id under breakpoint_mjx/batteries/ (built-in condition set if absent)."
+    required: false
+    default: "legged-quadruped-v1"
+  budget:
+    description: "smoke (CPU, GitHub-hosted runners) or standard (the battery as declared; GPU runner)."
+    required: false
+    default: "smoke"
+  tolerance:
+    description: "Fall-rate margin before a newly failing cell counts as a regression (0 = strict)."
+    required: false
+    default: "0"
+  python-version:
+    description: "Python version to install the engine under (>= 3.11)."
+    required: false
+    default: "3.11"
+  engine-ref:
+    description: "Git ref of InokiLabs/breakpoint to install."
+    required: false
+    default: "main"
+  repo-token:
+    description: >-
+      Token with read access to the engine repo, needed only when installing from a
+      private repo or mirror (pass secrets.BREAKPOINT_REPO_TOKEN). Leave empty for a
+      public repo.
+    required: false
+    default: ""
+  api-key:
+    description: "Optional BreakPoint Web project api key (secrets.BREAKPOINT_API_KEY). Upload is skipped when empty."
+    required: false
+    default: ""
+  project:
+    description: "Optional BreakPoint Web project slug. Upload is skipped when empty."
+    required: false
+    default: ""
+  out:
+    description: "Where to write the gate report."
+    required: false
+    default: "gate.json"
+
+outputs:
+  regressed:
+    description: "'true' when the candidate regressed, 'false' when it passed."
+    value: ${{ steps.gate.outputs.regressed }}
+  report:
+    description: "Path to the gate report JSON."
+    value: ${{ inputs.out }}
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install BreakPoint engine
+      shell: bash
+      env:
+        BP_REPO_TOKEN: ${{ inputs.repo-token }}
+        BP_ENGINE_REF: ${{ inputs.engine-ref }}
+      run: |
+        python -m pip install --upgrade pip
+        if [ -n "$BP_REPO_TOKEN" ]; then
+          # Private repo: the token only lives in this step's environment.
+          pip install "breakpoint-mjx[sim] @ git+https://x-access-token:${BP_REPO_TOKEN}@github.com/InokiLabs/breakpoint@${BP_ENGINE_REF}"
+        else
+          pip install "breakpoint-mjx[sim] @ git+https://github.com/InokiLabs/breakpoint@${BP_ENGINE_REF}"
+        fi
+        breakpoint --version
+
+    - name: Run the gate
+      id: gate
+      shell: bash
+      env:
+        BP_ROBOT: ${{ inputs.robot }}
+        BP_BASELINE: ${{ inputs.baseline }}
+        BP_CANDIDATE: ${{ inputs.candidate }}
+        BP_BATTERY: ${{ inputs.battery }}
+        BP_BUDGET_IN: ${{ inputs.budget }}
+        BP_TOLERANCE: ${{ inputs.tolerance }}
+        BP_GATE_OUT: ${{ inputs.out }}
+        BREAKPOINT_API_KEY: ${{ inputs.api-key }}
+        BREAKPOINT_PROJECT: ${{ inputs.project }}
+      run: |
+        set +e
+        breakpoint gate \
+          --robot "$BP_ROBOT" \
+          --baseline "$BP_BASELINE" \
+          --candidate "$BP_CANDIDATE" \
+          --battery "$BP_BATTERY" \
+          --budget "$BP_BUDGET_IN" \
+          --tolerance "$BP_TOLERANCE" \
+          --out "$BP_GATE_OUT" \
+          --summary-out "$GITHUB_STEP_SUMMARY"
+        rc=$?
+        echo "rc=$rc" >> "$GITHUB_OUTPUT"
+        if [ "$rc" = "1" ]; then echo "regressed=true" >> "$GITHUB_OUTPUT";
+        elif [ "$rc" = "0" ]; then echo "regressed=false" >> "$GITHUB_OUTPUT"; fi
+        exit 0
+
+    - name: Upload gate report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: breakpoint-gate-report
+        path: ${{ inputs.out }}
+        if-no-files-found: warn
+
+    - name: Gate verdict
+      shell: bash
+      env:
+        BP_RC: ${{ steps.gate.outputs.rc }}
+      run: |
+        if [ "$BP_RC" = "0" ]; then echo "BreakPoint gate passed"; exit 0; fi
+        if [ "$BP_RC" = "1" ]; then echo "CI GATE FAILED (regression detected): see the job summary"; exit 1; fi
+        echo "BreakPoint gate errored (exit $BP_RC)"; exit "${BP_RC:-2}"

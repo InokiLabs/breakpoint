@@ -1,0 +1,12 @@
+# HAND-WRITTEN FIXTURE: a unitree_rl_gym-style deploy config for a Go2-class quadruped
+# inside a checkout-shaped tree, with NO kps/kds, so init must read the gains and the
+# domain randomization from the legged_gym python configs next to it (parsed, never run).
+num_actions: 12
+num_obs: 45
+action_scale: 0.25
+ang_vel_scale: 0.25
+dof_pos_scale: 1.0
+dof_vel_scale: 0.05
+cmd_scale: [2.0, 2.0, 0.25]
+simulation_dt: 0.005
+control_decimation: 4

@@ -1,0 +1,35 @@
+# Unitree G1 (humanoid) theta space -- starts from configs/go1/theta_space.yaml.
+# The dimensions are robot-agnostic and the bounds are scale/offset-based (friction is
+# an absolute floor value; CoM are metre offsets; Kp/Kd/joint terms are multiplicative
+# scales), so they transfer to a humanoid unchanged -- EXCEPT the absolute mass offset:
+#
+#   torso_mass_add_kg widened [-1.0, 6.0] -> [-2.0, 12.0] (plausible [-1.0, 2.0] ->
+#   [-2.0, 4.0]). The G1 is materially heavier than the ~12 kg Go1 (Unitree G1 is
+#   ~35 kg), so a kg payload that meaningfully stresses the base must scale up roughly
+#   with total mass; the Go1 range would be a negligible perturbation on a humanoid
+#   pelvis. (It is applied to the pelvis floating-base body, the target's torso_body_id.)
+#
+# All other dims are intentionally identical to go1 so the comparison stays clean.
+# The thresholds (fall height) are NOT here -- they live on the Target.thresholds
+# override (trunk_height_min: 0.40) and merge over configs/search.yaml in run_pipeline.
+dims:
+  friction_floor: {kind: model, bounds: [0.15, 1.20], nominal: 0.80, plausible: [0.40, 1.00]}
+  torso_mass_add_kg: {kind: model, bounds: [-2.0, 12.0], nominal: 0.0, plausible: [-2.0, 4.0]}
+  com_offset_x_m: {kind: model, bounds: [-0.08, 0.08], nominal: 0.0, plausible: [-0.05, 0.05]}
+  com_offset_y_m: {kind: model, bounds: [-0.08, 0.08], nominal: 0.0, plausible: [-0.05, 0.05]}
+  kp_scale: {kind: model, bounds: [0.50, 1.50], nominal: 1.0, plausible: [0.85, 1.15]}
+  kd_scale: {kind: model, bounds: [0.50, 1.50], nominal: 1.0, plausible: [0.85, 1.15]}
+  com_offset_z_m: {kind: model, bounds: [-0.05, 0.05], nominal: 0.0, plausible: [-0.03, 0.03]}
+  joint_frictionloss_scale: {kind: model, bounds: [0.5, 3.0], nominal: 1.0, plausible: [0.9, 1.3]}
+  joint_armature_scale: {kind: model, bounds: [0.8, 2.0], nominal: 1.0, plausible: [1.0, 1.1]}
+  obs_noise_scale: {kind: rollout, bounds: [0.0, 0.10], nominal: 0.0, plausible: [0.0, 0.04]}
+  latency_steps: {kind: rollout, bounds: [0.0, 4.0], nominal: 0.0, plausible: [0.0, 2.0]}
+  # Tier-3 richer failure axes (T6) -- identical bounds to configs/go1/theta_space.yaml
+  # (kept the same as go1 so only torso_mass_add_kg differs, per the clean-comparison
+  # note above). See go1 for per-dim meaning. push_mag is in m/s; a heavier humanoid may
+  # warrant a wider push_mag later, but it is left equal to go1 for a clean comparison.
+  obs_dropout_prob: {kind: rollout, bounds: [0.0, 0.50], nominal: 0.0, plausible: [0.0, 0.20]}
+  obs_bias_scale: {kind: rollout, bounds: [0.0, 0.10], nominal: 0.0, plausible: [0.0, 0.04]}
+  push_mag: {kind: rollout, bounds: [0.0, 2.0], nominal: 0.0, plausible: [0.0, 1.0]}
+  push_step_frac: {kind: rollout, bounds: [0.0, 1.0], nominal: 0.0, plausible: [0.0, 1.0]}
+  floor_slope_rad: {kind: model, bounds: [-0.20, 0.20], nominal: 0.0, plausible: [-0.10, 0.10]}

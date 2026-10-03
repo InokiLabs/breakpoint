@@ -1,0 +1,200 @@
+<?xml version="1.0"?>
+<!--
+  Minimal hand-authored quadruped for the URDF-target tests. NOT a real robot: it is
+  the smallest description that still exercises every branch of urdf_target.py:
+  a free-flying trunk, four 2-dof legs (8 actuated revolute joints), real collision
+  geometry (so contacts exist), real link masses/inertias, and per-joint effort and
+  position limits (so ctrlrange/forcerange are derived, not guessed).
+
+  Geometry: trunk 0.30 x 0.15 x 0.08 at the origin; hips at (+/-0.12, +/-0.06, 0);
+  thigh 0.15 m; calf 0.15 m; foot sphere r=0.02. With all joints at 0 the legs point
+  straight down, so the trunk stands at 0.15 + 0.15 + 0.02 = 0.32 m.
+  Total mass = 5.0 (trunk) + 4 * (0.5 thigh + 0.3 calf) = 8.2 kg.
+-->
+<robot name="mini_quadruped">
+
+  <link name="trunk">
+    <inertial>
+      <origin xyz="0 0 0"/>
+      <mass value="5.0"/>
+      <inertia ixx="0.01204" ixy="0" ixz="0" iyy="0.04017" iyz="0" izz="0.04688"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0"/>
+      <geometry><box size="0.30 0.15 0.08"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0"/>
+      <geometry><box size="0.30 0.15 0.08"/></geometry>
+    </collision>
+  </link>
+
+  <!-- ================================ FR leg ================================ -->
+  <joint name="fr_hip" type="revolute">
+    <parent link="trunk"/>
+    <child link="fr_thigh"/>
+    <origin xyz="0.12 -0.06 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.0" upper="1.0" effort="24.0" velocity="20.0"/>
+  </joint>
+  <link name="fr_thigh">
+    <inertial>
+      <origin xyz="0 0 -0.075"/>
+      <mass value="0.5"/>
+      <inertia ixx="0.000975" ixy="0" ixz="0" iyy="0.000975" iyz="0" izz="0.000075"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 -0.075"/>
+      <geometry><box size="0.03 0.03 0.15"/></geometry>
+    </collision>
+  </link>
+  <joint name="fr_knee" type="revolute">
+    <parent link="fr_thigh"/>
+    <child link="fr_calf"/>
+    <origin xyz="0 0 -0.15"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-2.2" upper="0.0" effort="24.0" velocity="20.0"/>
+  </joint>
+  <link name="fr_calf">
+    <inertial>
+      <origin xyz="0 0 -0.075"/>
+      <mass value="0.3"/>
+      <inertia ixx="0.000578" ixy="0" ixz="0" iyy="0.000578" iyz="0" izz="0.0000313"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 -0.075"/>
+      <geometry><box size="0.025 0.025 0.15"/></geometry>
+    </collision>
+    <collision>
+      <origin xyz="0 0 -0.15"/>
+      <geometry><sphere radius="0.02"/></geometry>
+    </collision>
+  </link>
+
+  <!-- ================================ FL leg ================================ -->
+  <joint name="fl_hip" type="revolute">
+    <parent link="trunk"/>
+    <child link="fl_thigh"/>
+    <origin xyz="0.12 0.06 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.0" upper="1.0" effort="24.0" velocity="20.0"/>
+  </joint>
+  <link name="fl_thigh">
+    <inertial>
+      <origin xyz="0 0 -0.075"/>
+      <mass value="0.5"/>
+      <inertia ixx="0.000975" ixy="0" ixz="0" iyy="0.000975" iyz="0" izz="0.000075"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 -0.075"/>
+      <geometry><box size="0.03 0.03 0.15"/></geometry>
+    </collision>
+  </link>
+  <joint name="fl_knee" type="revolute">
+    <parent link="fl_thigh"/>
+    <child link="fl_calf"/>
+    <origin xyz="0 0 -0.15"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-2.2" upper="0.0" effort="24.0" velocity="20.0"/>
+  </joint>
+  <link name="fl_calf">
+    <inertial>
+      <origin xyz="0 0 -0.075"/>
+      <mass value="0.3"/>
+      <inertia ixx="0.000578" ixy="0" ixz="0" iyy="0.000578" iyz="0" izz="0.0000313"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 -0.075"/>
+      <geometry><box size="0.025 0.025 0.15"/></geometry>
+    </collision>
+    <collision>
+      <origin xyz="0 0 -0.15"/>
+      <geometry><sphere radius="0.02"/></geometry>
+    </collision>
+  </link>
+
+  <!-- ================================ RR leg ================================ -->
+  <joint name="rr_hip" type="revolute">
+    <parent link="trunk"/>
+    <child link="rr_thigh"/>
+    <origin xyz="-0.12 -0.06 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.0" upper="1.0" effort="24.0" velocity="20.0"/>
+  </joint>
+  <link name="rr_thigh">
+    <inertial>
+      <origin xyz="0 0 -0.075"/>
+      <mass value="0.5"/>
+      <inertia ixx="0.000975" ixy="0" ixz="0" iyy="0.000975" iyz="0" izz="0.000075"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 -0.075"/>
+      <geometry><box size="0.03 0.03 0.15"/></geometry>
+    </collision>
+  </link>
+  <joint name="rr_knee" type="revolute">
+    <parent link="rr_thigh"/>
+    <child link="rr_calf"/>
+    <origin xyz="0 0 -0.15"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-2.2" upper="0.0" effort="24.0" velocity="20.0"/>
+  </joint>
+  <link name="rr_calf">
+    <inertial>
+      <origin xyz="0 0 -0.075"/>
+      <mass value="0.3"/>
+      <inertia ixx="0.000578" ixy="0" ixz="0" iyy="0.000578" iyz="0" izz="0.0000313"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 -0.075"/>
+      <geometry><box size="0.025 0.025 0.15"/></geometry>
+    </collision>
+    <collision>
+      <origin xyz="0 0 -0.15"/>
+      <geometry><sphere radius="0.02"/></geometry>
+    </collision>
+  </link>
+
+  <!-- ================================ RL leg ================================ -->
+  <joint name="rl_hip" type="revolute">
+    <parent link="trunk"/>
+    <child link="rl_thigh"/>
+    <origin xyz="-0.12 0.06 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.0" upper="1.0" effort="24.0" velocity="20.0"/>
+  </joint>
+  <link name="rl_thigh">
+    <inertial>
+      <origin xyz="0 0 -0.075"/>
+      <mass value="0.5"/>
+      <inertia ixx="0.000975" ixy="0" ixz="0" iyy="0.000975" iyz="0" izz="0.000075"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 -0.075"/>
+      <geometry><box size="0.03 0.03 0.15"/></geometry>
+    </collision>
+  </link>
+  <joint name="rl_knee" type="revolute">
+    <parent link="rl_thigh"/>
+    <child link="rl_calf"/>
+    <origin xyz="0 0 -0.15"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-2.2" upper="0.0" effort="24.0" velocity="20.0"/>
+  </joint>
+  <link name="rl_calf">
+    <inertial>
+      <origin xyz="0 0 -0.075"/>
+      <mass value="0.3"/>
+      <inertia ixx="0.000578" ixy="0" ixz="0" iyy="0.000578" iyz="0" izz="0.0000313"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 -0.075"/>
+      <geometry><box size="0.025 0.025 0.15"/></geometry>
+    </collision>
+    <collision>
+      <origin xyz="0 0 -0.15"/>
+      <geometry><sphere radius="0.02"/></geometry>
+    </collision>
+  </link>
+
+</robot>
