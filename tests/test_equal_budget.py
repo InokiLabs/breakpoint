@@ -186,9 +186,10 @@ def test_every_arm_spends_exactly_the_budget(go1_space, small_cfg):
         for m in res["arms"][arm]["per_seed"]:
             assert m["evals"] == 24, arm
     # every call has the directed batch shape (one compile), and the total adds up:
-    # 3 arms x 2 seeds x 24 rollouts, each in batches of 8
+    # 4 arms x 2 seeds x 24 rollouts, each in batches of 8 (lhs_boundary splits its
+    # budget on batch boundaries, so it pads nothing)
     assert set(calls) == {8}
-    assert sum(calls) == 3 * 2 * 24
+    assert sum(calls) == len(eb.ARMS) * 2 * 24
 
 
 def test_directed_arm_real_cmaes_evals_equal_budget(go1_space, small_cfg):
@@ -317,3 +318,24 @@ def test_cli_exposes_baseline_subcommand():
          "smoke", "--out", "x"])
     assert a.func is cli.cmd_baseline
     assert (a.budget, a.seeds, a.preset, a.replay_k) == (64, 2, "smoke", 4)
+
+
+def test_lhs_boundary_spends_half_on_lhs_then_refines_near_the_threshold(go1_space,
+                                                                          small_cfg):
+    pytest.importorskip("jax")
+    pytest.importorskip("scipy")
+    calls = []
+    plan = eb.plan_directed(32, 2, 4)                     # batch 8
+    X, sc, evals = eb.run_arm("lhs_boundary", _synthetic_evaluate(go1_space, calls),
+                              go1_space, small_cfg, plan, 0, log=None)
+    assert evals == 32 and X.shape == (32, len(go1_space.names()))
+    lo, hi = np.asarray(go1_space.lower()), np.asarray(go1_space.upper())
+    assert np.all(X >= lo - 1e-9) and np.all(X <= hi + 1e-9)
+    # stage 1 is a Latin hypercube: each dim's 16 values fall in 16 distinct strata
+    u = (X[:16] - lo) / (hi - lo)
+    for d in range(u.shape[1]):
+        assert len(set(np.floor(u[:, d] * 16).astype(int))) == 16
+    # deterministic per seed
+    X2, _, _ = eb.run_arm("lhs_boundary", _synthetic_evaluate(go1_space, []), go1_space,
+                          small_cfg, plan, 0, log=None)
+    np.testing.assert_array_equal(X, X2)

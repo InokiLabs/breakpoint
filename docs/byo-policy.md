@@ -58,8 +58,8 @@ trained (sections below): `actuation:` (its PD gains, applied to the target) and
 stage). An **INFO** row says what was carried over.
 
 Nothing is dropped silently. A **WARN** row means the run is still meaningful with that
-caveat. A **FATAL** row (a height scan, a gait phase clock, stacked history, a different
-number of actuators) means the policy needs inputs the target cannot produce; `init`
+caveat. A **FATAL** row (a height scan, a gait phase clock, per-term history lengths that
+differ, a different number of actuators) means the policy needs inputs the target cannot produce; `init`
 refuses to write a contract and exits 2.
 
 Then check through the contract:
@@ -153,11 +153,13 @@ not know can read raw channels with `{term: name, start: i, dim: n}`.
 * PD gains ARE reproduced on Go1 (`actuation:` with `honor: true`). Control period,
   actuator torque/velocity limits, learned actuator networks, obs noise and obs/action
   clipping are reported, not reproduced.
-* Stacked observation history is refused (see below).
+* Stacked observation history is supported (see below); per-term history lengths must
+  agree, and an unflattened `(history, dim)` input is refused.
 * The `kd_scale` search dim is a no-op on the Playground Go1 whether or not gains are
   honored: it multiplies `actuator_biasprm[:, 2]`, which is 0 on that model (Kd lives in
   `dof_damping`). `kp_scale` works and scales the honored gains.
-* MLP policies only (the adapters' scope): recurrent and vision policies are out.
+* MLP, history-stacked MLP, and LSTM/GRU recurrent actors (RSL-RL `ActorCriticRecurrent`).
+  Vision (CNN/transformer/VLA) policies are out.
 
 ## The policy's own PD gains: `actuation:`
 
@@ -229,14 +231,45 @@ checkout the YAML lives in (`legged_gym/envs/base/legged_robot_config.py` plus
 `legged_gym/envs/<robot>/<robot>_config.py`), or `BP_TRAIN_CFG`. The python files are
 parsed with `ast` and only literal assignments are read; nothing is imported or run.
 
-## Stacked observation history: refused
+## Stateful policies: observation history and recurrent actors
 
-`history: {length: H, ...}` in a contract, or Isaac Lab's `history_length`, is refused.
-The shared rollout calls a stateless `policy_fn(obs, key)` inside the evaluator's vmap,
-and its scan carry is `(env state, action latency buffer, key)`, so there is no place for
-a per-env observation ring buffer without changing `rollout.py` / `evaluator.py`. That
-change was deliberately not made in this build (`tests/test_history_obs.py` pins the
-reason and fails if the carry ever grows a policy state).
+Most deployed legged policies are not a bare MLP on one observation. The shared rollout
+carries a per-env policy state through its scan (`breakpoint_mjx/adapters/stateful.py`):
+a policy that exposes `init_carry(obs)` is called `policy(obs, key, carry) -> (action,
+carry)`, its state is built at reset and replayed bit-exactly like everything else, and
+a stateless policy compiles to exactly the program it did before. The same carry runs on
+the MJX evaluator and the C MuJoCo replay engine (the Genesis backend refuses stateful
+policies with a clear error).
+
+**Observation history.** Add a `history:` block to the contract:
+
+```yaml
+history:
+  length: 5            # frames kept
+  layout: term         # term: each term's history, then the next term (Isaac Lab,
+                       #       flatten_history_dim); frame: [o_{t-4} ... o_t] (legged_gym)
+  fill: first          # before 5 steps: repeat the first obs (Isaac Lab) or zeros
+  order: oldest_first  # or newest_first, within each block
+```
+
+The `obs:` terms still describe ONE frame; the policy's first layer must take `length x`
+that width, or the contract is refused with the arithmetic. A per-frame `normalization:`
+is laid out to match the stacked input; a stacked one (length `length x width`) is used
+as is. `breakpoint init --from rsl_rl <run dir>` writes the block from Isaac Lab's
+`history_length` (term layout, first-frame fill).
+
+**Recurrent actors.** Dump an RSL-RL `ActorCriticRecurrent` state_dict to one `.npz`
+(`memory_a.rnn.weight_ih_l0`, `weight_hh_l0`, `bias_ih_l0`, `bias_hh_l0`, ... and the
+`actor.{i}.weight` / `.bias` Linear layers) and pass it as `params:policy.npz`; the LSTM
+or GRU is recognised from the gate count, multi-layer stacks are supported, and the hidden
+state resets to zeros each episode as in RSL-RL. The contract applies to the recurrent
+input exactly as to an MLP's. `init` notes a recurrent agent config with an INFO row.
+
+Verified by `tests/test_stateful.py`: the LSTM and GRU cells match torch's documented
+equations, the jax and numpy forwards agree, and a history policy built to read only the
+newest frame reproduces the stateless demo policy's trajectories through the real MJX
+evaluator (noise, latency and per-episode sensor bias on) and through the C MuJoCo engine
+(`tests/test_mujoco_c_parity.py`).
 
 ## Measurements (CPU, 2026-09-27)
 

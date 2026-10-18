@@ -21,8 +21,15 @@ ARMS (one evaluator, one theta space, one horizon, B rollouts per arm per seed):
     distribution (``riskcert.OperationalDist`` resolved by ``famrisk.resolve_odd`` from
     BP_RISK_DIST or a contract's ``operational:`` block). Skipped, with the reason logged,
     when none is declared: the plausible-band fallback is not a training distribution.
+  * ``lhs_boundary`` -- a RoboGate-style baseline (arXiv 2603.22126: Latin-hypercube
+    sampling plus boundary-focused sampling). Half the budget (rounded to whole batches)
+    is a Latin hypercube over the box; the rest is spent around the stage-1 worlds whose
+    failure score sits closest to the threshold, by Gaussian perturbation (5% of each
+    dim's range). This is our implementation of the published description, not their
+    code; it is here so the comparison includes a current competitor's search strategy,
+    not only plain random sampling.
 
-All three arms evaluate in batches of ``restarts * popsize`` rows so they share ONE
+All arms evaluate in batches of ``restarts * popsize`` rows so they share ONE
 compiled evaluator (a different batch shape would recompile the jitted rollout).
 
 METRICS (per arm, per seed). None of them reads ``transfer_likelihood``:
@@ -63,7 +70,9 @@ from types import SimpleNamespace
 import numpy as np
 
 BASIS_LABEL = "simulation only"
-ARMS = ("uniform", "directed", "train_dr")
+# Order matters: an arm's RNG stream is keyed by its index, so new arms are appended.
+ARMS = ("uniform", "directed", "train_dr", "lhs_boundary")
+BOUNDARY_SIGMA = 0.05       # lhs_boundary stage-2 perturbation, fraction of each range
 METRIC_KEYS = ("n_failures", "failure_rate", "closest_l2", "closest_linf", "n_in_band",
                "n_modes", "n_modes_in_band", "replay_rate")
 
@@ -322,11 +331,41 @@ def run_arm(arm, evaluate, space, cfg, plan, seed, *, objective=None, train_dist
             X = np.asarray(train_dist.sample(B, rng), dtype=float)
         key = jax.random.PRNGKey(int(seed) * 7919 + 101 * (ARMS.index(arm) + 1))
         sc, evals = _eval_rows(evaluate, X, plan.batch, key, cfg, objective)
+    elif arm == "lhs_boundary":
+        X, sc, evals = _lhs_boundary(evaluate, space, cfg, plan, seed, objective)
     else:
         raise ValueError(f"unknown arm {arm!r}")
     if evals != B:
         raise RuntimeError(f"{arm} arm spent {evals} rollouts, budget is {B}")
     return X, sc, evals
+
+
+def _lhs_boundary(evaluate, space, cfg, plan, seed, objective):
+    """Latin hypercube, then boundary-focused refinement (see the module docstring)."""
+    import jax
+    from scipy.stats import qmc
+
+    B, batch = plan.budget, plan.batch
+    lo = np.asarray(space.lower(), dtype=float)
+    hi = np.asarray(space.upper(), dtype=float)
+    b1 = min(B, max(batch, (B // 2) // batch * batch))
+    sampler = qmc.LatinHypercube(d=len(lo), seed=np.random.default_rng(
+        [int(seed), ARMS.index("lhs_boundary")]))
+    X1 = lo + sampler.random(b1) * (hi - lo)
+    key = jax.random.PRNGKey(int(seed) * 7919 + 101 * (ARMS.index("lhs_boundary") + 1))
+    k1, k2 = jax.random.split(key)
+    s1, e1 = _eval_rows(evaluate, X1, batch, k1, cfg, objective)
+    b2 = B - b1
+    if b2 <= 0:
+        return X1, s1, e1
+    rng = np.random.default_rng([int(seed), ARMS.index("lhs_boundary"), 2])
+    n_anchor = max(1, b2 // 4)
+    anchors = X1[np.argsort(np.abs(s1 - cfg.failure_threshold))[:n_anchor]]
+    X2 = anchors[np.arange(b2) % n_anchor] + rng.normal(
+        0.0, BOUNDARY_SIGMA, (b2, len(lo))) * (hi - lo)
+    X2 = np.clip(X2, lo, hi)
+    s2, e2 = _eval_rows(evaluate, X2, batch, k2, cfg, objective)
+    return np.concatenate([X1, X2]), np.concatenate([s1, s2]), e1 + e2
 
 
 def run_benchmark(evaluate, space, cfg, plan, seeds, *, arms=ARMS, objective=None,

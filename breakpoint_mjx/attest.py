@@ -274,12 +274,23 @@ def check_policy_file(report: dict, policy_path) -> VerifyResult:
     return VerifyResult(True, "policy sha256 matches the local file")
 
 
+def _no_duplicates(pairs):
+    """Refuse duplicate keys. Python keeps the last one, other parsers the first, so a
+    report with duplicates could display different content from what was verified."""
+    out = {}
+    for k, v in pairs:
+        if k in out:
+            raise AttestError(f"duplicate key {k!r} in report JSON")
+        out[k] = v
+    return out
+
+
 def load_report(path) -> dict:
     p = Path(path)
     if not p.is_file():
         raise AttestError(f"report not found: {p}")
     try:
-        data = json.loads(p.read_text(encoding="utf-8"))
+        data = json.loads(p.read_text(encoding="utf-8"), object_pairs_hook=_no_duplicates)
     except json.JSONDecodeError as e:
         raise AttestError(f"{p} is not valid JSON: {e}") from e
     if not isinstance(data, dict):

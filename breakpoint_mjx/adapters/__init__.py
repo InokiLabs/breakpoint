@@ -31,9 +31,10 @@ imported lazily inside ``MLPPolicy.policy_fn``; ``onnx`` inside ``from_onnx``. S
 importers/shim/forward are all CPU-testable, and the jax forward is exercised only on the
 GPU (Colab).
 
-Scope (documented, not enforced): deterministic MLP control policies. Stochastic sampling,
-recurrent (RNN/LSTM) state, and vision/CNN/transformer/VLA nets are unsupported here -- a
-harder later tail. For a Gaussian-policy export the MEAN (pre-tanh) head is used, which is
+Scope (documented, not enforced): deterministic MLP control policies, history-stacked MLPs
+and LSTM/GRU recurrent actors (``stateful.py``: ``HistoryPolicy``, ``RecurrentPolicy``,
+carried through the rollout's scan state). Stochastic sampling and vision/CNN/transformer/
+VLA nets are unsupported here. For a Gaussian-policy export the MEAN (pre-tanh) head is used, which is
 what a deterministic eval takes.
 """
 from __future__ import annotations
@@ -71,9 +72,19 @@ from breakpoint_mjx.adapters.importers import (
     from_unitree_rl_gym,
     parse_policy_spec,
 )
+from breakpoint_mjx.adapters.stateful import (
+    HistoryPolicy,
+    RecurrentPolicy,
+    is_stateful,
+    recurrent_from_state_dict,
+)
 
 __all__ = [
     "ACTIVATIONS",
+    "HistoryPolicy",
+    "RecurrentPolicy",
+    "is_stateful",
+    "recurrent_from_state_dict",
     "MLPPolicy",
     "ObsSpec",
     "OutputTransform",

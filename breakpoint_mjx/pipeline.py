@@ -591,6 +591,9 @@ def main(argv=None):
     stats = compute_report_stats(
         families, n_total=len(all_records), n_failures=len(failures),
         threshold=cfg.failure_threshold, coverage=coverage,
+        # without records the physical-validity screen never runs: simulator artifacts
+        # stay in every denominator and the report's validity line is blank
+        records=all_records,
     )
     # This rate is over the worlds the SEARCH chose (adversarially selected), so it is
     # NOT a deployment failure probability. BP_RISK=1 below produces that one.

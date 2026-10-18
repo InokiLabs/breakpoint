@@ -414,3 +414,28 @@ def test_full_collision_replay_keeps_torso_above_floor(fx, full_model):
     assert float(np.min(full["up_proj"])) < 0.5 or float(np.min(feet["floor_height"])) < 0.18, (
         "the probe world did not fall; pick a harsher theta so the check means something")
     assert float(np.min(feet["floor_height"])) < float(np.min(full["floor_height"]))
+
+
+def test_stateful_policy_runs_on_the_c_engine(fx):
+    """A history policy that reads only the newest frame is the stateless policy, so the
+    C-engine replay must not change: pins the carry plumbing in MujocoCBackend."""
+    from breakpoint_mjx.adapters.mlp import MLPPolicy
+    from breakpoint_mjx.adapters.obs_spec import ObsSpec
+    from breakpoint_mjx.adapters.stateful import HistoryPolicy
+
+    base = fx.policy_fn.__self__
+    H, D = 3, base.in_dim
+    (W0, b0), rest = base.params[0], base.params[1:]
+    Wh = np.zeros((H * D, W0.shape[1]))
+    Wh[(H - 1) * D:] = W0
+    head = MLPPolicy(params=[(Wh, b0)] + list(rest), activation=base.activation,
+                     obs_spec=ObsSpec(keys=("_history",), expected_dim=H * D))
+    hp = HistoryPolicy(frame_spec=ObsSpec(expected_dim=D), mlp=head, length=H,
+                       layout="frame")
+    rec = _record(fx, latency_steps=1.0, obs_noise_scale=0.02, obs_bias_scale=0.01)
+    a = MujocoCBackend(fx.env, fx.policy_fn, fx.target, fx.space, fx.consts,
+                       HORIZON).simulate(rec)
+    b = MujocoCBackend(fx.env, hp, fx.target, fx.space, fx.consts, HORIZON).simulate(rec)
+    for k in CONTRACT_KEYS:
+        np.testing.assert_allclose(np.asarray(a[k]), np.asarray(b[k]), rtol=1e-5,
+                                   atol=1e-5, err_msg=k)

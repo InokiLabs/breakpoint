@@ -375,12 +375,16 @@ def test_replay_stage_runs_on_the_pristine_model_and_restores_it(monkeypatch):
 
 def test_replay_pools_like_cmc_when_inconclusive():
     """Two misses in 8 make 7/8 unreachable: inconclusive at K=8 (early stop). With
-    BP_REPLAY_MAXMULT-style pooling the replay tops up one wave and decides at 14/16."""
+    BP_REPLAY_MAXMULT-style pooling the replay tops up and decides on the exact
+    group-sequential boundaries (looks every K/2 = 4 seeds): reproduced at 10/12. The old
+    full-alpha CP test at each wave decided later (14/16) AND over-spent alpha."""
     fam = _fam([{"dim": "b", "value": 0.7, "direction": "high"}])
     kw = dict(score_fn=_score, threshold=0.5, thresholds=TH, batch_key=[0, 1], n_after=3)
     flaky = set(range(32)) - {1, 5}
     rp1, _, _ = replay_family(_FakeBackend(flaky), _Space(), fam, k=8, **kw)
     assert (rp1["k"], rp1["n"], rp1["verdict"]) == (4, 6, "inconclusive")  # early stop
     rp4, _, _ = replay_family(_FakeBackend(flaky), _Space(), fam, k=8, max_mult=4, **kw)
-    assert (rp4["k"], rp4["n"], rp4["verdict"]) == (14, 16, "reproduced")
+    assert (rp4["k"], rp4["n"], rp4["verdict"]) == (10, 12, "reproduced")
     assert rp4["reproduces"] is True
+    assert rp4["decision_rule"] == "group-sequential"
+    assert rp1["decision_rule"] == "clopper-pearson"

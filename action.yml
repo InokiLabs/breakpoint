@@ -1,8 +1,9 @@
 name: "BreakPoint policy gate"
 description: >-
   pytest for robot policies: evaluate a candidate checkpoint against the baseline on the
-  same fixed conditions and seeds, and fail the build when the candidate falls where the
-  baseline survived. Runs entirely on your runner; weights never leave it.
+  same fixed conditions and seeds, and fail the build when exact paired tests show the
+  candidate falls more (false alarms <= alpha). Runs entirely on your runner; weights
+  never leave it.
 branding:
   icon: "shield"
   color: "orange"
@@ -19,17 +20,29 @@ inputs:
     description: "Path to the candidate checkpoint on the runner (the policy under test)."
     required: true
   battery:
-    description: "Battery id under breakpoint_mjx/batteries/ (built-in condition set if absent)."
+    description: "Battery id under breakpoint_mjx/batteries/ or a YAML path (empty = the robot's battery)."
     required: false
-    default: "legged-quadruped-v1"
+    default: ""
   budget:
     description: "smoke (CPU, GitHub-hosted runners) or standard (the battery as declared; GPU runner)."
     required: false
     default: "smoke"
   tolerance:
-    description: "Fall-rate margin before a newly failing cell counts as a regression (0 = strict)."
+    description: "Fall-rate margin: an increase at or below this never fails the build (0 = strict)."
     required: false
     default: "0"
+  decision:
+    description: "stat (exact paired tests, false alarms <= alpha) or rule (the original pass-rule comparison)."
+    required: false
+    default: "stat"
+  alpha:
+    description: "False-alarm budget for decision stat."
+    required: false
+    default: "0.05"
+  escalate-to:
+    description: "Fresh seeds for cells that got worse but not significantly (empty = 32 for standard, 0 for smoke)."
+    required: false
+    default: ""
   python-version:
     description: "Python version to install the engine under (>= 3.11)."
     required: false
@@ -98,20 +111,28 @@ runs:
         BP_BATTERY: ${{ inputs.battery }}
         BP_BUDGET_IN: ${{ inputs.budget }}
         BP_TOLERANCE: ${{ inputs.tolerance }}
+        BP_DECISION: ${{ inputs.decision }}
+        BP_ALPHA: ${{ inputs.alpha }}
+        BP_ESCALATE: ${{ inputs.escalate-to }}
         BP_GATE_OUT: ${{ inputs.out }}
         BREAKPOINT_API_KEY: ${{ inputs.api-key }}
         BREAKPOINT_PROJECT: ${{ inputs.project }}
       run: |
         set +e
+        extra=()
+        if [ -n "$BP_BATTERY" ]; then extra+=(--battery "$BP_BATTERY"); fi
+        if [ -n "$BP_ESCALATE" ]; then extra+=(--escalate-to "$BP_ESCALATE"); fi
         breakpoint gate \
           --robot "$BP_ROBOT" \
           --baseline "$BP_BASELINE" \
           --candidate "$BP_CANDIDATE" \
-          --battery "$BP_BATTERY" \
           --budget "$BP_BUDGET_IN" \
           --tolerance "$BP_TOLERANCE" \
+          --decision "$BP_DECISION" \
+          --alpha "$BP_ALPHA" \
           --out "$BP_GATE_OUT" \
-          --summary-out "$GITHUB_STEP_SUMMARY"
+          --summary-out "$GITHUB_STEP_SUMMARY" \
+          "${extra[@]}"
         rc=$?
         echo "rc=$rc" >> "$GITHUB_OUTPUT"
         if [ "$rc" = "1" ]; then echo "regressed=true" >> "$GITHUB_OUTPUT";

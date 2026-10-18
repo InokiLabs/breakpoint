@@ -1,0 +1,632 @@
+{
+  "basis": {
+    "label": "CPU smoke",
+    "target": "go1",
+    "budget": 384,
+    "horizon": 150,
+    "seeds": [
+      0,
+      1
+    ],
+    "preset": "smoke",
+    "directed_plan": "2 restarts x 32 popsize x 6 generations = 384 rollouts (64 per batched call)",
+    "directed_split": {
+      "restarts": 2,
+      "popsize": 32,
+      "generations": 6
+    },
+    "directed_seed_theta": "none (restart 0 at box centre; no LLM seed)",
+    "failure_threshold": 0.5,
+    "policy": "bundled Go1 demo policy (assets/demo/go1_policy.pkl)",
+    "train_dr_source": null,
+    "replay": true,
+    "replay_note": "4 closest failures per arm/seed, 4 seeds each, C-MuJoCo full-collision; rate = reproduced/replayed (CP lower bound >= the CMC bar)",
+    "basis": "simulation only",
+    "backend": "cpu",
+    "nominal_check": {
+      "n": 64,
+      "failures": 0,
+      "rate": 0.0,
+      "max_score": 0.0859
+    },
+    "wall_s": 212.9
+  },
+  "arms": {
+    "uniform": {
+      "per_seed": [
+        {
+          "evals": 384,
+          "n_failures": 359,
+          "failure_rate": 0.9349,
+          "closest_l2": 1.033122493740358,
+          "closest_linf": 0.45430757656956333,
+          "n_in_band": 156,
+          "n_modes": 10,
+          "n_modes_in_band": 10,
+          "modes": [
+            "high joint_armature_scale",
+            "high joint_frictionloss_scale",
+            "high latency_steps",
+            "high obs_bias_scale",
+            "high obs_dropout_prob",
+            "high obs_noise_scale",
+            "high push_mag",
+            "high push_step_frac",
+            "high torso_mass_add_kg",
+            "low friction_floor"
+          ],
+          "seed": 0,
+          "replay_rate": 0.25,
+          "replay": {
+            "n": 4,
+            "confirmed": 1,
+            "rows": [
+              {
+                "verdict": "inconclusive",
+                "k": 1,
+                "n": 2,
+                "reproduces": false
+              },
+              {
+                "verdict": "inconclusive",
+                "k": 1,
+                "n": 2,
+                "reproduces": false
+              },
+              {
+                "verdict": "inconclusive",
+                "k": 3,
+                "n": 4,
+                "reproduces": false
+              },
+              {
+                "verdict": "reproduced",
+                "k": 4,
+                "n": 4,
+                "reproduces": true
+              }
+            ],
+            "collision_model": "playground_scene"
+          },
+          "wall_s": 33.8
+        },
+        {
+          "evals": 384,
+          "n_failures": 355,
+          "failure_rate": 0.9245,
+          "closest_l2": 1.1061362547517855,
+          "closest_linf": 0.48975082539276804,
+          "n_in_band": 155,
+          "n_modes": 10,
+          "n_modes_in_band": 10,
+          "modes": [
+            "high joint_armature_scale",
+            "high joint_frictionloss_scale",
+            "high latency_steps",
+            "high obs_bias_scale",
+            "high obs_dropout_prob",
+            "high obs_noise_scale",
+            "high push_mag",
+            "high push_step_frac",
+            "high torso_mass_add_kg",
+            "low kp_scale"
+          ],
+          "seed": 1,
+          "replay_rate": 0.25,
+          "replay": {
+            "n": 4,
+            "confirmed": 1,
+            "rows": [
+              {
+                "verdict": "inconclusive",
+                "k": 1,
+                "n": 2,
+                "reproduces": false
+              },
+              {
+                "verdict": "inconclusive",
+                "k": 1,
+                "n": 2,
+                "reproduces": false
+              },
+              {
+                "verdict": "inconclusive",
+                "k": 1,
+                "n": 2,
+                "reproduces": false
+              },
+              {
+                "verdict": "reproduced",
+                "k": 4,
+                "n": 4,
+                "reproduces": true
+              }
+            ],
+            "collision_model": "playground_scene"
+          },
+          "wall_s": 23.5
+        }
+      ],
+      "summary": {
+        "n_failures": {
+          "mean": 357.0,
+          "min": 355.0,
+          "max": 359.0,
+          "values": [
+            359,
+            355
+          ],
+          "n_missing": 0
+        },
+        "failure_rate": {
+          "mean": 0.9297,
+          "min": 0.9245,
+          "max": 0.9349,
+          "values": [
+            0.9349,
+            0.9245
+          ],
+          "n_missing": 0
+        },
+        "closest_l2": {
+          "mean": 1.0696293742460719,
+          "min": 1.033122493740358,
+          "max": 1.1061362547517855,
+          "values": [
+            1.033122493740358,
+            1.1061362547517855
+          ],
+          "n_missing": 0
+        },
+        "closest_linf": {
+          "mean": 0.4720292009811657,
+          "min": 0.45430757656956333,
+          "max": 0.48975082539276804,
+          "values": [
+            0.45430757656956333,
+            0.48975082539276804
+          ],
+          "n_missing": 0
+        },
+        "n_in_band": {
+          "mean": 155.5,
+          "min": 155.0,
+          "max": 156.0,
+          "values": [
+            156,
+            155
+          ],
+          "n_missing": 0
+        },
+        "n_modes": {
+          "mean": 10.0,
+          "min": 10.0,
+          "max": 10.0,
+          "values": [
+            10,
+            10
+          ],
+          "n_missing": 0
+        },
+        "n_modes_in_band": {
+          "mean": 10.0,
+          "min": 10.0,
+          "max": 10.0,
+          "values": [
+            10,
+            10
+          ],
+          "n_missing": 0
+        },
+        "replay_rate": {
+          "mean": 0.25,
+          "min": 0.25,
+          "max": 0.25,
+          "values": [
+            0.25,
+            0.25
+          ],
+          "n_missing": 0
+        }
+      }
+    },
+    "directed": {
+      "per_seed": [
+        {
+          "evals": 384,
+          "n_failures": 356,
+          "failure_rate": 0.9271,
+          "closest_l2": 0.8571106765508156,
+          "closest_linf": 0.33887141942977905,
+          "n_in_band": 322,
+          "n_modes": 11,
+          "n_modes_in_band": 11,
+          "modes": [
+            "high joint_armature_scale",
+            "high joint_frictionloss_scale",
+            "high latency_steps",
+            "high obs_bias_scale",
+            "high obs_dropout_prob",
+            "high obs_noise_scale",
+            "high push_mag",
+            "high push_step_frac",
+            "high torso_mass_add_kg",
+            "low friction_floor",
+            "low kd_scale"
+          ],
+          "seed": 0,
+          "replay_rate": 0.25,
+          "replay": {
+            "n": 4,
+            "confirmed": 1,
+            "rows": [
+              {
+                "verdict": "inconclusive",
+                "k": 0,
+                "n": 1,
+                "reproduces": false
+              },
+              {
+                "verdict": "reproduced",
+                "k": 4,
+                "n": 4,
+                "reproduces": true
+              },
+              {
+                "verdict": "inconclusive",
+                "k": 0,
+                "n": 1,
+                "reproduces": false
+              },
+              {
+                "verdict": "inconclusive",
+                "k": 1,
+                "n": 2,
+                "reproduces": false
+              }
+            ],
+            "collision_model": "playground_scene"
+          },
+          "wall_s": 23.2
+        },
+        {
+          "evals": 384,
+          "n_failures": 345,
+          "failure_rate": 0.8984,
+          "closest_l2": 0.7852253135513958,
+          "closest_linf": 0.3534698858857155,
+          "n_in_band": 286,
+          "n_modes": 10,
+          "n_modes_in_band": 10,
+          "modes": [
+            "high joint_armature_scale",
+            "high joint_frictionloss_scale",
+            "high latency_steps",
+            "high obs_bias_scale",
+            "high obs_dropout_prob",
+            "high obs_noise_scale",
+            "high push_mag",
+            "high push_step_frac",
+            "high torso_mass_add_kg",
+            "low friction_floor"
+          ],
+          "seed": 1,
+          "replay_rate": 0.25,
+          "replay": {
+            "n": 4,
+            "confirmed": 1,
+            "rows": [
+              {
+                "verdict": "inconclusive",
+                "k": 0,
+                "n": 1,
+                "reproduces": false
+              },
+              {
+                "verdict": "reproduced",
+                "k": 4,
+                "n": 4,
+                "reproduces": true
+              },
+              {
+                "verdict": "inconclusive",
+                "k": 0,
+                "n": 1,
+                "reproduces": false
+              },
+              {
+                "verdict": "inconclusive",
+                "k": 1,
+                "n": 2,
+                "reproduces": false
+              }
+            ],
+            "collision_model": "playground_scene"
+          },
+          "wall_s": 29.0
+        }
+      ],
+      "summary": {
+        "n_failures": {
+          "mean": 350.5,
+          "min": 345.0,
+          "max": 356.0,
+          "values": [
+            356,
+            345
+          ],
+          "n_missing": 0
+        },
+        "failure_rate": {
+          "mean": 0.91275,
+          "min": 0.8984,
+          "max": 0.9271,
+          "values": [
+            0.9271,
+            0.8984
+          ],
+          "n_missing": 0
+        },
+        "closest_l2": {
+          "mean": 0.8211679950511057,
+          "min": 0.7852253135513958,
+          "max": 0.8571106765508156,
+          "values": [
+            0.8571106765508156,
+            0.7852253135513958
+          ],
+          "n_missing": 0
+        },
+        "closest_linf": {
+          "mean": 0.34617065265774727,
+          "min": 0.33887141942977905,
+          "max": 0.3534698858857155,
+          "values": [
+            0.33887141942977905,
+            0.3534698858857155
+          ],
+          "n_missing": 0
+        },
+        "n_in_band": {
+          "mean": 304.0,
+          "min": 286.0,
+          "max": 322.0,
+          "values": [
+            322,
+            286
+          ],
+          "n_missing": 0
+        },
+        "n_modes": {
+          "mean": 10.5,
+          "min": 10.0,
+          "max": 11.0,
+          "values": [
+            11,
+            10
+          ],
+          "n_missing": 0
+        },
+        "n_modes_in_band": {
+          "mean": 10.5,
+          "min": 10.0,
+          "max": 11.0,
+          "values": [
+            11,
+            10
+          ],
+          "n_missing": 0
+        },
+        "replay_rate": {
+          "mean": 0.25,
+          "min": 0.25,
+          "max": 0.25,
+          "values": [
+            0.25,
+            0.25
+          ],
+          "n_missing": 0
+        }
+      }
+    },
+    "lhs_boundary": {
+      "per_seed": [
+        {
+          "evals": 384,
+          "n_failures": 345,
+          "failure_rate": 0.8984,
+          "closest_l2": 1.1803852483863493,
+          "closest_linf": 0.5330705105418688,
+          "n_in_band": 144,
+          "n_modes": 10,
+          "n_modes_in_band": 10,
+          "modes": [
+            "high joint_armature_scale",
+            "high joint_frictionloss_scale",
+            "high latency_steps",
+            "high obs_bias_scale",
+            "high obs_dropout_prob",
+            "high obs_noise_scale",
+            "high push_mag",
+            "high push_step_frac",
+            "high torso_mass_add_kg",
+            "low friction_floor"
+          ],
+          "seed": 0,
+          "replay_rate": 0.0,
+          "replay": {
+            "n": 4,
+            "confirmed": 0,
+            "rows": [
+              {
+                "verdict": "inconclusive",
+                "k": 0,
+                "n": 1,
+                "reproduces": false
+              },
+              {
+                "verdict": "inconclusive",
+                "k": 1,
+                "n": 2,
+                "reproduces": false
+              },
+              {
+                "verdict": "inconclusive",
+                "k": 1,
+                "n": 2,
+                "reproduces": false
+              },
+              {
+                "verdict": "inconclusive",
+                "k": 2,
+                "n": 3,
+                "reproduces": false
+              }
+            ],
+            "collision_model": "playground_scene"
+          },
+          "wall_s": 33.7
+        },
+        {
+          "evals": 384,
+          "n_failures": 345,
+          "failure_rate": 0.8984,
+          "closest_l2": 1.0612473287221706,
+          "closest_linf": 0.42319289615896943,
+          "n_in_band": 162,
+          "n_modes": 11,
+          "n_modes_in_band": 11,
+          "modes": [
+            "high com_offset_y_m",
+            "high joint_armature_scale",
+            "high joint_frictionloss_scale",
+            "high latency_steps",
+            "high obs_bias_scale",
+            "high obs_dropout_prob",
+            "high obs_noise_scale",
+            "high push_mag",
+            "high push_step_frac",
+            "high torso_mass_add_kg",
+            "low friction_floor"
+          ],
+          "seed": 1,
+          "replay_rate": 1.0,
+          "replay": {
+            "n": 4,
+            "confirmed": 4,
+            "rows": [
+              {
+                "verdict": "reproduced",
+                "k": 4,
+                "n": 4,
+                "reproduces": true
+              },
+              {
+                "verdict": "reproduced",
+                "k": 4,
+                "n": 4,
+                "reproduces": true
+              },
+              {
+                "verdict": "reproduced",
+                "k": 4,
+                "n": 4,
+                "reproduces": true
+              },
+              {
+                "verdict": "reproduced",
+                "k": 4,
+                "n": 4,
+                "reproduces": true
+              }
+            ],
+            "collision_model": "playground_scene"
+          },
+          "wall_s": 52.1
+        }
+      ],
+      "summary": {
+        "n_failures": {
+          "mean": 345.0,
+          "min": 345.0,
+          "max": 345.0,
+          "values": [
+            345,
+            345
+          ],
+          "n_missing": 0
+        },
+        "failure_rate": {
+          "mean": 0.8984,
+          "min": 0.8984,
+          "max": 0.8984,
+          "values": [
+            0.8984,
+            0.8984
+          ],
+          "n_missing": 0
+        },
+        "closest_l2": {
+          "mean": 1.12081628855426,
+          "min": 1.0612473287221706,
+          "max": 1.1803852483863493,
+          "values": [
+            1.1803852483863493,
+            1.0612473287221706
+          ],
+          "n_missing": 0
+        },
+        "closest_linf": {
+          "mean": 0.4781317033504191,
+          "min": 0.42319289615896943,
+          "max": 0.5330705105418688,
+          "values": [
+            0.5330705105418688,
+            0.42319289615896943
+          ],
+          "n_missing": 0
+        },
+        "n_in_band": {
+          "mean": 153.0,
+          "min": 144.0,
+          "max": 162.0,
+          "values": [
+            144,
+            162
+          ],
+          "n_missing": 0
+        },
+        "n_modes": {
+          "mean": 10.5,
+          "min": 10.0,
+          "max": 11.0,
+          "values": [
+            10,
+            11
+          ],
+          "n_missing": 0
+        },
+        "n_modes_in_band": {
+          "mean": 10.5,
+          "min": 10.0,
+          "max": 11.0,
+          "values": [
+            10,
+            11
+          ],
+          "n_missing": 0
+        },
+        "replay_rate": {
+          "mean": 0.5,
+          "min": 0.0,
+          "max": 1.0,
+          "values": [
+            0.0,
+            1.0
+          ],
+          "n_missing": 0
+        }
+      }
+    }
+  }
+}

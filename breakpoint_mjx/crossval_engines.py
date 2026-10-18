@@ -341,16 +341,19 @@ def replay_family(backend, space, family, *, k, score_fn, threshold, thresholds,
                   n_after, alpha=None, bar=None, collect=False, max_mult=1):
     """Replay one family's minimal counterexample on ``k`` seeds (+ one nominal twin).
 
-    The verdict uses the SAME Clopper-Pearson rule as CMC (``mincause.decide``):
-    ``reproduced`` when the lower bound clears the bar, ``not_reproduced`` when the upper
-    bound is below it, else ``inconclusive``. With ``max_mult > 1`` an inconclusive result
-    is topped up in waves of ``k`` seeds up to ``k * max_mult`` (CMC pools up to 4x); with
-    the default 1 the replay stops as soon as the bar is out of reach within ``k`` seeds.
+    With the default ``max_mult=1`` there is one look at ``k`` seeds and the verdict uses
+    the SAME Clopper-Pearson rule as CMC (``mincause.decide``): ``reproduced`` when the
+    lower bound clears the bar, ``not_reproduced`` when the upper bound is below it, else
+    ``inconclusive``; the replay stops as soon as the bar is out of reach. With
+    ``max_mult > 1`` an undecided family is topped up in rounds up to ``k * max_mult``
+    seeds and decided on the exact group-sequential boundaries of
+    ``mincause.look_schedule`` (the same certifier CMC uses), so repeated looks do not
+    inflate the error rate past ``alpha``: a full-alpha CP test at every wave would.
     Only ``reproduced`` keeps a family in the ranked list. Returns ``(replay_dict,
     ce_states, twin_states)``; the state lists are None unless ``collect``. ``backend``
     is anything with ``simulate(record, collect_states=...)`` and a settable
     ``early_stop``, so this is CPU-unit-testable with a fake."""
-    from breakpoint_mjx.mincause import ALPHA, FAIL_BAR, cp_lower, cp_upper, decide
+    from breakpoint_mjx.mincause import ALPHA, FAIL_BAR, cp_lower, cp_upper, look_schedule
     from breakpoint_mjx.render import fall_step, min_floor_height
 
     alpha = ALPHA if alpha is None else alpha
@@ -361,6 +364,11 @@ def replay_family(backend, space, family, *, k, score_fn, threshold, thresholds,
     need = next((j for j in range(k + 1) if cp_lower(j, k, alpha) >= bar), k + 1)
     hits, n, falls, floors, ce_states = 0, 0, [], [], None
     n_max = k * max(1, int(max_mult))
+    sequential = max_mult > 1 and k > 1
+    if sequential:
+        looks, fail_c, pass_d = look_schedule(k, n_max, alpha, bar)
+        look_at = {nn: r for r, nn in enumerate(looks)}
+    seq_verdict = None
     for i in range(n_max):
         backend.early_stop = stop_after_fall(thresholds, n_after)
         rec = _replay_record(space, ce, batch_key, i, f"replay-{family.id}-{i}")
@@ -373,10 +381,16 @@ def replay_family(backend, space, family, *, k, score_fn, threshold, thresholds,
         hits += int(float(score_fn(summ)) >= threshold)
         falls.append(fall_step(summ, thresholds))
         floors.append(min_floor_height(summ))
-        if max_mult <= 1 and (n - hits) > (k - need):
+        if not sequential and (n - hits) > (k - need):
             break                          # 'reproduced' is out of reach within k seeds
-        if n % k == 0 and decide(hits, n, k, alpha, bar) != "undecided":
-            break                          # decided at a wave boundary (CMC pooling)
+        if sequential and n in look_at:
+            r = look_at[n]
+            if hits >= fail_c[r]:
+                seq_verdict = "reproduced"
+            elif hits <= pass_d[r]:
+                seq_verdict = "not_reproduced"
+            if seq_verdict is not None:
+                break                      # decided on the group-sequential boundary
     twin, twin_states = None, None
     if family.minimal_cause:               # an empty cause means it fails AT nominal
         cap = (falls[0] + 1 + n_after) if falls and falls[0] is not None else None
@@ -392,13 +406,18 @@ def replay_family(backend, space, family, *, k, score_fn, threshold, thresholds,
     backend.early_stop = None
     lo = cp_lower(hits, n, alpha)
     hi = cp_upper(hits, n, alpha)
-    verdict = ("reproduced" if lo >= bar else "not_reproduced" if hi < bar
-               else "inconclusive")
+    if sequential:
+        verdict = seq_verdict or "inconclusive"
+    else:
+        verdict = ("reproduced" if lo >= bar else "not_reproduced" if hi < bar
+                   else "inconclusive")
     fl = [x for x in floors if x is not None]
     return {
         "k": int(hits), "n": int(n), "k_planned": int(k), "cp_lo": round(float(lo), 4),
         "cp_hi": round(float(hi), 4), "verdict": verdict,
-        "bar": float(bar), "alpha": float(alpha), "reproduces": bool(lo >= bar),
+        "bar": float(bar), "alpha": float(alpha),
+        "reproduces": verdict == "reproduced",
+        "decision_rule": "group-sequential" if sequential else "clopper-pearson",
         "fall_steps": falls, "min_floor_height": (min(fl) if fl else None),
         "counterexample": ce, "nominal_twin": twin,
     }, ce_states, twin_states

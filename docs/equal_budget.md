@@ -119,6 +119,44 @@ The directed advantage shows up exactly on the metrics nearest to what it optimi
 modes. Two seeds at a smoke budget are not enough to call it; the standard-budget GPU
 run (`colab/baseline_cell.py`) is the measurement that would.
 
+## Re-run with a competitor's search strategy (macOS CPU, 2026-10-16)
+
+The same smoke basis (go1, B=384 per arm per seed, horizon 150, seeds 0 and 1, replay of
+the 4 closest failures per arm/seed on 4 C-MuJoCo seeds), now with a third arm,
+`lhs_boundary`: our implementation of RoboGate's published two-stage sampler
+(arXiv 2603.22126: Latin hypercube, then sampling concentrated at the failure boundary;
+RoboGate targets the 30-70% success zone, we use "failure score closest to the
+threshold" as the same signal). Apple M-series laptop, jax CPU, 222 s wall for all three
+arms. Raw: `docs/equal_budget_lhs_cpu_smoke.json`.
+
+```
+python -m breakpoint_mjx.equal_budget --target go1 --budget 384 --seeds 2 --preset smoke \
+    --replay --replay-k 4 --replay-seeds 4 --arms uniform,directed,lhs_boundary \
+    --label "CPU smoke" --out <dir>
+```
+
+| arm | failures | closest L2 (lower=better) | closest Linf | in-band failures | modes | replay confirmed |
+|---|---|---|---|---|---|---|
+| uniform | 357.0 [355, 359] | 1.070 [1.033, 1.106] | 0.472 [0.454, 0.490] | 155.5 [155, 156] | 10.0 | 2/8 |
+| directed | 350.5 [345, 356] | **0.821 [0.785, 0.857]** | **0.346 [0.339, 0.353]** | **304.0 [286, 322]** | 10.5 | 2/8 |
+| lhs_boundary | 345.0 [345, 345] | 1.121 [1.061, 1.180] | 0.478 [0.423, 0.533] | 153.0 [144, 162] | 10.5 | 4/8 |
+
+What it says:
+
+- **Closest failure to nominal: directed wins against both baselines on both seeds**
+  (L2 0.79 / 0.86 vs 1.03-1.18; the ranges do not overlap). The boundary-focused sampler
+  does not beat plain uniform here: with 92% of worlds failing, the "boundary" it refines
+  around is not near nominal. Same caveat as above: the transfer weighting pulls the
+  directed arm toward the plausible bands.
+- **In-band failures: directed about 2x either baseline** (304 vs 155 / 153), with the
+  stronger version of the same caveat.
+- **Raw counts and modes are saturated** for all three arms on this fragile demo policy.
+- **The replay result did NOT reproduce.** The 2026-09-28 run above had directed 6/8 vs
+  uniform 1/8; this run has 2/8, 2/8 and 4/8. The directed arm is not bit-identical across
+  machines and jax versions (its closest-L2 range moved from [0.737, 0.906] to
+  [0.785, 0.857]), and eight replays per arm cannot separate arms whose true rates differ
+  by less than a large margin. Treat replay as unresolved at this budget.
+
 ## Limits
 
 - Simulation only. Nothing here measures real hardware.

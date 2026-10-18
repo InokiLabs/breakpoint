@@ -267,3 +267,12 @@ def test_cli_sign_bad_report_is_clean_error(tmp_path, capsys):
     bad.write_text("[1, 2]", encoding="utf-8")
     assert cli.main(["sign", str(bad), "--key", str(priv_p)]) == 2
     assert "not a JSON object" in capsys.readouterr().err
+
+
+@pytest.mark.no_crypto_needed
+def test_load_report_refuses_duplicate_keys(tmp_path):
+    # Python keeps the last duplicate, other parsers the first: refuse, never guess
+    p = tmp_path / "dup.json"
+    p.write_text('{"kind": "rating", "robot": "go1", "robot": "g1"}', encoding="utf-8")
+    with pytest.raises(attest.AttestError, match="duplicate key 'robot'"):
+        attest.load_report(p)
