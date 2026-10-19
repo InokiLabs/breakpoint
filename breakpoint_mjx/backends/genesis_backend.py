@@ -502,15 +502,17 @@ class GenesisBackend:
         ``available_engines`` prints this, so a run that silently dropped Genesis can
         never be mistaken for one where Genesis agreed.
         """
-        if not cls.available():
-            return "genesis not importable"
-        if not READY:
-            return "URDF parity not ported (READY=False)"
+        # The structural reason first: installing genesis would not make a Playground env
+        # runnable, so that is the reason to report whether or not genesis is installed.
         if env is not None and not cls.supports_env(env):
             return (
                 "target is not URDF-derived; Genesis cannot run a MuJoCo Playground env "
                 "(Playground owns reset/obs/command and cannot be called from Genesis)"
             )
+        if not cls.available():
+            return "genesis not importable"
+        if not READY:
+            return "URDF parity not ported (READY=False)"
         return None
 
     # -- entry point --------------------------------------------------------- #
@@ -620,6 +622,10 @@ class GenesisBackend:
                     >= obs_dropout_prob).astype(obs_vec.dtype)
             # Dropout zeros channels LAST, so a dropped channel reads exactly 0.
             perturbed = (obs_vec + gauss + obs_bias) * keep
+            if callable(getattr(self.policy_fn, "init_carry", None)):
+                raise NotImplementedError(
+                    "stateful (history / recurrent) policies are not wired into the "
+                    "Genesis backend; use the MJX or C MuJoCo backend")
             act, _ = self.policy_fn({"state": perturbed}, nk_policy)
             act = np.asarray(act, dtype=np.float64).reshape(nu)
             buf = np.concatenate([act[None], buf[:-1]], axis=0)   # newest at index 0

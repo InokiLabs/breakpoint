@@ -526,3 +526,40 @@ def test_script_empty_atlas_trips_gate(space, tmp_path):
                      "--families", str(base), "--bp-out", bp_out]) == 0
     assert cli.main(["--target", "go1", "--version", "ckpt-2",
                      "--families", str(empty), "--bp-out", bp_out]) == 1
+
+
+# --------------------------------------------------------------------------- #
+# Store robustness
+# --------------------------------------------------------------------------- #
+def test_load_atlas_drops_unknown_fields_with_a_warning(space, tmp_path):
+    import json
+
+    p = tmp_path / "v.json"
+    regression.save_atlas([_family(space, {"friction_floor": 0.2})], {"version": "v"}, p)
+    data = json.loads(p.read_text())
+    data["families"][0]["field_from_the_future"] = 1
+    p.write_text(json.dumps(data))
+    with pytest.warns(UserWarning, match="field_from_the_future"):
+        fams, meta = regression.load_atlas(p)
+    assert len(fams) == 1 and meta["version"] == "v"
+
+
+def test_load_atlas_refuses_a_newer_schema(space, tmp_path):
+    import json
+
+    p = tmp_path / "v.json"
+    regression.save_atlas([], {"version": "v"}, p)
+    data = json.loads(p.read_text())
+    data["schema"] = regression.SCHEMA_VERSION + 1
+    p.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="newer than this engine"):
+        regression.load_atlas(p)
+
+
+def test_colliding_version_names_are_refused(space, tmp_path):
+    hist = tmp_path / "hist"
+    regression.save_version(hist, "ckpt/a", [_family(space, {"friction_floor": 0.2})])
+    with pytest.raises(ValueError, match="would overwrite"):
+        regression.save_version(hist, "ckpt_a", [])
+    # re-saving the SAME version id is still allowed
+    regression.save_version(hist, "ckpt/a", [])

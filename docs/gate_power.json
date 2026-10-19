@@ -1,0 +1,292 @@
+{
+  "trials": 4000,
+  "base_p": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.02,
+    0.02,
+    0.02,
+    0.02,
+    0.02,
+    0.1,
+    0.15,
+    0.2,
+    0.4
+  ],
+  "rows": [
+    {
+      "scenario": "null",
+      "seeds": 4,
+      "rho": 0.0,
+      "rule": 0.7355,
+      "stat": 0.00575,
+      "stat_escalated": 0.0085,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "one-cell 0.02->0.50",
+      "seeds": 4,
+      "rho": 0.0,
+      "rule": 0.96075,
+      "stat": 0.0365,
+      "stat_escalated": 0.91175,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "one-cell 0.02->0.25",
+      "seeds": 4,
+      "rho": 0.0,
+      "rule": 0.897,
+      "stat": 0.0185,
+      "stat_escalated": 0.2945,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "spread +0.10 everywhere",
+      "seeds": 4,
+      "rho": 0.0,
+      "rule": 0.9975,
+      "stat": 0.3295,
+      "stat_escalated": 0.77675,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "spread +0.05 everywhere",
+      "seeds": 4,
+      "rho": 0.0,
+      "rule": 0.97825,
+      "stat": 0.0955,
+      "stat_escalated": 0.19375,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "null",
+      "seeds": 8,
+      "rho": 0.0,
+      "rule": 0.5655,
+      "stat": 0.01225,
+      "stat_escalated": 0.0135,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "one-cell 0.02->0.50",
+      "seeds": 8,
+      "rho": 0.0,
+      "rule": 0.97525,
+      "stat": 0.092,
+      "stat_escalated": 0.97425,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "one-cell 0.02->0.25",
+      "seeds": 8,
+      "rho": 0.0,
+      "rule": 0.84175,
+      "stat": 0.04275,
+      "stat_escalated": 0.38175,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "spread +0.10 everywhere",
+      "seeds": 8,
+      "rho": 0.0,
+      "rule": 0.98675,
+      "stat": 0.6915,
+      "stat_escalated": 0.95725,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "spread +0.05 everywhere",
+      "seeds": 8,
+      "rho": 0.0,
+      "rule": 0.875,
+      "stat": 0.23725,
+      "stat_escalated": 0.3735,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "null",
+      "seeds": 32,
+      "rho": 0.0,
+      "rule": 0.4835,
+      "stat": 0.019,
+      "stat_escalated": 0.01675,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "one-cell 0.02->0.50",
+      "seeds": 32,
+      "rho": 0.0,
+      "rule": 0.999,
+      "stat": 0.944,
+      "stat_escalated": 0.99825,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "one-cell 0.02->0.25",
+      "seeds": 32,
+      "rho": 0.0,
+      "rule": 0.96525,
+      "stat": 0.25075,
+      "stat_escalated": 0.49025,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "spread +0.10 everywhere",
+      "seeds": 32,
+      "rho": 0.0,
+      "rule": 0.99625,
+      "stat": 0.9995,
+      "stat_escalated": 1.0,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "spread +0.05 everywhere",
+      "seeds": 32,
+      "rho": 0.0,
+      "rule": 0.81675,
+      "stat": 0.81725,
+      "stat_escalated": 0.9035,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "null",
+      "seeds": 4,
+      "rho": 0.5,
+      "rule": 0.646,
+      "stat": 0.00425,
+      "stat_escalated": 0.00575,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "one-cell 0.02->0.50",
+      "seeds": 4,
+      "rho": 0.5,
+      "rule": 0.94275,
+      "stat": 0.03,
+      "stat_escalated": 0.9235,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "one-cell 0.02->0.25",
+      "seeds": 4,
+      "rho": 0.5,
+      "rule": 0.846,
+      "stat": 0.012,
+      "stat_escalated": 0.3445,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "spread +0.10 everywhere",
+      "seeds": 4,
+      "rho": 0.5,
+      "rule": 0.99625,
+      "stat": 0.4015,
+      "stat_escalated": 0.839,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "spread +0.05 everywhere",
+      "seeds": 4,
+      "rho": 0.5,
+      "rule": 0.96625,
+      "stat": 0.10775,
+      "stat_escalated": 0.21325,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "null",
+      "seeds": 8,
+      "rho": 0.5,
+      "rule": 0.502,
+      "stat": 0.00825,
+      "stat_escalated": 0.01075,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "one-cell 0.02->0.50",
+      "seeds": 8,
+      "rho": 0.5,
+      "rule": 0.9785,
+      "stat": 0.1205,
+      "stat_escalated": 0.99125,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "one-cell 0.02->0.25",
+      "seeds": 8,
+      "rho": 0.5,
+      "rule": 0.798,
+      "stat": 0.0375,
+      "stat_escalated": 0.4395,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "spread +0.10 everywhere",
+      "seeds": 8,
+      "rho": 0.5,
+      "rule": 0.98425,
+      "stat": 0.7975,
+      "stat_escalated": 0.98075,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "spread +0.05 everywhere",
+      "seeds": 8,
+      "rho": 0.5,
+      "rule": 0.8485,
+      "stat": 0.29275,
+      "stat_escalated": 0.45325,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "null",
+      "seeds": 32,
+      "rho": 0.5,
+      "rule": 0.40525,
+      "stat": 0.014,
+      "stat_escalated": 0.014,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "one-cell 0.02->0.50",
+      "seeds": 32,
+      "rho": 0.5,
+      "rule": 0.99975,
+      "stat": 0.98175,
+      "stat_escalated": 1.0,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "one-cell 0.02->0.25",
+      "seeds": 32,
+      "rho": 0.5,
+      "rule": 0.9625,
+      "stat": 0.285,
+      "stat_escalated": 0.543,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "spread +0.10 everywhere",
+      "seeds": 32,
+      "rho": 0.5,
+      "rule": 0.99625,
+      "stat": 1.0,
+      "stat_escalated": 1.0,
+      "escalate_to": 32
+    },
+    {
+      "scenario": "spread +0.05 everywhere",
+      "seeds": 32,
+      "rho": 0.5,
+      "rule": 0.794,
+      "stat": 0.91375,
+      "stat_escalated": 0.95975,
+      "escalate_to": 32
+    }
+  ]
+}

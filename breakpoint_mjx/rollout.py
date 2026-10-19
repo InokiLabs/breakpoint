@@ -95,6 +95,13 @@ def rollout_one(
       latency ring buffer: newest at index 0, delayed = buf[lat]
       at step==round(push_step_frac*(H-1)): base qvel[:3] += push_mag * dir (key-sampled)
 
+    Stateful policies (observation history, LSTM/GRU; adapters/stateful.py) expose
+    ``init_carry(obs)`` and are called ``policy_fn(obs, key, carry) -> (act, carry)``.
+    The carry is built from the (perturbed) reset observation and lives in the scan
+    state, so it is per-env under vmap and replays bit-exactly. Whether a policy is
+    stateful is a trace-time Python check: a stateless policy compiles to exactly the
+    previous program.
+
     Nominal-safe: with every new adversary at its nominal 0 the rollout is
     byte-identical to the pre-adversary path (dropout mask is all-ones, bias/push are 0),
     so eval_nominal and existing behavior do not shift.
@@ -143,8 +150,14 @@ def rollout_one(
         jnp.round(push_step_frac * (horizon - 1)).astype(jnp.int32), 0, horizon - 1
     )
 
+    stateful = callable(getattr(policy_fn, "init_carry", None))
+    # The carry starts from the clean reset obs plus the episode's sensor bias (no
+    # per-step noise or dropout is drawn for it: those keys belong to step 0).
+    pcarry0 = (policy_fn.init_carry(_obs_with_state(st0.obs, _obs_state(st0.obs) + obs_bias))
+               if stateful else None)
+
     def body(carry, step_idx):
-        st, buf, key = carry
+        st, buf, key, pcarry = carry
         key, nk_noise, nk_policy = jax.random.split(key, 3)
         # Observation adversaries all draw from the obs-noise key stream (nk_noise) so
         # they stay deterministic + vmappable. Gaussian noise uses nk_noise directly (so
@@ -157,7 +170,10 @@ def rollout_one(
         ).astype(state.dtype)
         # Dropout zeros channels LAST, so a dropped channel reads exactly 0 (not noise).
         obs = _obs_with_state(st.obs, (state + gauss + obs_bias) * keep)
-        act, _ = policy_fn(obs, nk_policy)
+        if stateful:
+            act, pcarry = policy_fn(obs, nk_policy, pcarry)
+        else:
+            act, _ = policy_fn(obs, nk_policy)
         buf = jnp.concatenate([act[None], buf[:-1]], axis=0)  # newest at index 0
         delayed = buf[lat]                                     # lat=0 => no delay
         # Apply the gait-timed push to the base linear velocity at the chosen step, BEFORE
@@ -195,11 +211,12 @@ def rollout_one(
             # Trace-time bool like collect_states, so eval throughput is untouched.
             summary = {**summary, "obs_state": _obs_state(obs), "action": act}
         out = (summary, st) if collect_states else summary
-        return (st, buf, key), out
+        return (st, buf, key, pcarry), out
 
     # xs = arange(H) so `body` gets the step index (drives the gait-timed push); this is
     # also the scan length. With push_mag=0 the step index is unused, so nominal is a no-op.
-    (_, _, _), scanned = jax.lax.scan(body, (st0, buf0, key), jnp.arange(horizon))
+    (_, _, _, _), scanned = jax.lax.scan(body, (st0, buf0, key, pcarry0),
+                                         jnp.arange(horizon))
 
     if collect_states:
         traj, stacked = scanned

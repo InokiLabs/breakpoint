@@ -1,0 +1,40 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # The light install: core deps only (numpy + pyyaml). Catches anything in the CLI,
+  # report, rating, gate or attestation path that accidentally needs the sim stack.
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -U pip && python -m pip install -e ".[dev,attest]"
+      - run: python -m pytest -q tests/test_gate.py tests/test_gate_stats.py tests/test_attest.py tests/test_ratings.py
+
+  # The full suite on CPU with the simulator extras, exactly as the README installs them,
+  # so a broken `pip install -e ".[sim]"` fails here rather than on a user's machine.
+  full:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    env:
+      JAX_PLATFORMS: cpu
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: python -m pip install -U pip wheel && python -m pip install -e ".[sim,dev,attest,onnx]"
+      - run: python -m pytest -q

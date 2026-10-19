@@ -502,6 +502,12 @@ class MujocoCBackend:
         push_step = int(np.clip(round(push_step_frac * (horizon - 1)), 0, horizon - 1))
 
         buf = np.zeros((LMAX + 1, int(env.action_size)), dtype=np.float32)
+        # Stateful policy (history / recurrent): same carry rule as rollout_one, built
+        # from the reset obs plus the episode's sensor bias.
+        pol = fast.policy if fast else self.policy_fn
+        stateful = callable(getattr(self.policy_fn, "init_carry", None))
+        pcarry = (self.policy_fn.init_carry(_obs_with_state(
+            state.obs, np.asarray(_obs_state(state.obs)) + obs_bias)) if stateful else None)
         calls = [0]
         steps = []
         states = [state] if collect_states else None
@@ -514,7 +520,10 @@ class MujocoCBackend:
             ).astype(vec.dtype)
             # Dropout zeros channels LAST, so a dropped channel reads exactly 0 (rollout_one).
             perturbed = _obs_with_state(state.obs, (vec + gauss + obs_bias) * keep)
-            act, _ = (fast.policy if fast else self.policy_fn)(perturbed, nk_policy)
+            if stateful:
+                act, pcarry = pol(perturbed, nk_policy, pcarry)
+            else:
+                act, _ = pol(perturbed, nk_policy)
             buf = np.concatenate([np.asarray(act, dtype=np.float32)[None], buf[:-1]], axis=0)
             delayed = buf[latency_steps]                      # lat=0 => no delay
             # Gait-timed push on the base linear velocity, applied to the float64 C state

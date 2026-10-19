@@ -620,10 +620,28 @@ def save_atlas(families, meta, path) -> str:
 
 
 def load_atlas(path):
-    """Load an atlas JSON back into ``(families, meta)``."""
+    """Load an atlas JSON back into ``(families, meta)``.
+
+    An atlas written by a NEWER engine (higher ``schema``) is refused with a clear
+    message rather than half-read; fields this engine does not know are dropped with a
+    warning, so an older store stays loadable after FailureFamily gains a field."""
+    import dataclasses
+    import warnings
+
     with open(path, encoding="utf-8") as fh:
         payload = json.load(fh)
-    families = [FailureFamily(**f) for f in payload.get("families", [])]
+    schema = payload.get("schema", SCHEMA_VERSION)
+    if not isinstance(schema, int) or schema > SCHEMA_VERSION:
+        raise ValueError(f"{path}: atlas schema {schema!r} is newer than this engine "
+                         f"understands ({SCHEMA_VERSION}); upgrade breakpoint")
+    known = {f.name for f in dataclasses.fields(FailureFamily)}
+    families, dropped = [], set()
+    for f in payload.get("families", []):
+        dropped |= set(f) - known
+        families.append(FailureFamily(**{k: v for k, v in f.items() if k in known}))
+    if dropped:
+        warnings.warn(f"{path}: ignoring unknown family fields {sorted(dropped)}",
+                      stacklevel=2)
     meta = payload.get("meta", {}) or {}
     return families, meta
 
@@ -709,6 +727,12 @@ def save_version(history_dir, version, families, meta=None) -> str:
     existing = list_versions(history_dir)
     key = _sanitize_version(version)
     by_ver = {_sanitize_version(d["version"]): d for d in existing}
+    clash = by_ver.get(key)
+    if clash is not None and str(clash["version"]) != str(version):
+        # "ckpt/a" and "ckpt_a" sanitize to the same file name: refuse rather than
+        # silently overwrite another version's atlas
+        raise ValueError(f"version {version!r} would overwrite stored version "
+                         f"{clash['version']!r} (both map to {key}.json); rename one")
     if key in by_ver and by_ver[key]["sequence"] is not None:
         seq = by_ver[key]["sequence"]
     else:

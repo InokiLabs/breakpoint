@@ -454,13 +454,24 @@ def build_policy(
             path, activation=activation, obs_spec=obs_spec, out_transform=out_transform
         )
     elif kind in ("params", "npz", "weights"):
-        policy = from_npz(
-            path,
-            activation=activation or "tanh",
-            obs_spec=obs_spec,
-            out_transform=out_transform,
-            weight_layout=weight_layout,
-        )
+        with np.load(path, allow_pickle=False) as nz:
+            recurrent = any(k.startswith("memory_a.rnn.") for k in nz.files)
+            sd = {k: nz[k] for k in nz.files} if recurrent else None
+        if recurrent:
+            # an RSL-RL ActorCriticRecurrent state_dict dumped to npz
+            from breakpoint_mjx.adapters.stateful import recurrent_from_state_dict
+
+            policy = recurrent_from_state_dict(
+                sd, obs_spec=obs_spec, activation=activation or "elu",
+                out_transform=out_transform)
+        else:
+            policy = from_npz(
+                path,
+                activation=activation or "tanh",
+                obs_spec=obs_spec,
+                out_transform=out_transform,
+                weight_layout=weight_layout,
+            )
     else:  # pragma: no cover - parse_policy_spec only returns known kinds
         raise ValueError(f"unknown policy kind {kind!r}; use 'onnx:' or 'params:'")
 
@@ -544,32 +555,69 @@ def apply_contract(policy, contract):
     is kept and applied after the contract's per-term affine; the contract's action map
     (joint permutation, per-joint scale/offset) composes after the policy's squash.
     """
+    from breakpoint_mjx.adapters.stateful import (HistoryPolicy, RecurrentPolicy,
+                                                  stack_history)
+
     spec = contract.to_obs_spec()
+    if isinstance(policy, RecurrentPolicy):
+        old = policy.obs_spec
+        frame = dataclasses.replace(
+            spec, mean=old.mean if old.mean is not None else spec.mean,
+            std=old.std if old.std is not None else spec.std)
+        head = policy.mlp
+        head = MLPPolicy(params=head.params, activation=head.activation,
+                         obs_spec=head.obs_spec,
+                         out_transform=_compose_output(head.out_transform, contract))
+        out = RecurrentPolicy(kind=policy.kind, layers=policy.layers, mlp=head,
+                              obs_spec=frame, contract=contract)
+        return out
     old = policy.obs_spec
     mean = old.mean if old is not None and old.mean is not None else spec.mean
     std = old.std if old is not None and old.std is not None else spec.std
+    ot = _compose_output(policy.out_transform, contract)
+    if contract.history:
+        h = contract.history
+        d = spec.expected_dim
+        if mean is not None and mean.shape[-1] == d != policy.in_dim:
+            # a per-frame normalization: lay it out exactly like the stacked input
+            mean = stack_history(np.tile(mean, (h["length"], 1)), h["layout"], h["order"],
+                                 contract.term_dims, np)
+            std = stack_history(np.tile(std, (h["length"], 1)), h["layout"], h["order"],
+                                contract.term_dims, np)
+        head = MLPPolicy(params=policy.params, activation=policy.activation,
+                         obs_spec=ObsSpec(keys=("_history",), mean=mean, std=std,
+                                          expected_dim=policy.in_dim),
+                         out_transform=ot)
+        return HistoryPolicy(frame_spec=dataclasses.replace(spec, mean=None, std=None),
+                             mlp=head, length=h["length"], layout=h["layout"],
+                             fill=h["fill"], order=h["order"],
+                             term_dims=contract.term_dims, contract=contract)
     if spec.expected_dim is not None and spec.expected_dim != policy.in_dim:
         raise ValueError(
             f"the contract lists {spec.expected_dim} obs channels but the policy's first "
             f"layer takes {policy.in_dim}; the contract's term list does not match this "
-            f"checkpoint")
+            f"checkpoint (a policy trained on stacked observations needs a history: "
+            f"block in the contract)")
     new_spec = dataclasses.replace(spec, mean=mean, std=std)
-    ot = contract.to_output_transform()
-    if ot is not None:
-        base = policy.out_transform or OutputTransform()
-        a = contract.action_dim
-        s0 = np.broadcast_to(np.asarray(base.scale, dtype=float), (a,))
-        b0 = np.broadcast_to(np.asarray(base.bias, dtype=float), (a,))
-        perm = np.asarray(ot.perm)
-        ot = OutputTransform(squash=base.squash, mean_dim=base.mean_dim, perm=ot.perm,
-                             scale=s0[perm] * ot.scale,
-                             bias=b0[perm] * ot.scale + ot.bias)
-    else:
-        ot = policy.out_transform
     out = MLPPolicy(params=policy.params, activation=policy.activation,
                     obs_spec=new_spec, out_transform=ot)
     out.contract = contract
     return out
+
+
+def _compose_output(base, contract):
+    """The contract's action map (joint permutation, per-joint scale/offset) composed
+    after the policy's own output transform (squash, scale, bias)."""
+    ot = contract.to_output_transform()
+    if ot is None:
+        return base
+    base = base or OutputTransform()
+    a = contract.action_dim
+    s0 = np.broadcast_to(np.asarray(base.scale, dtype=float), (a,))
+    b0 = np.broadcast_to(np.asarray(base.bias, dtype=float), (a,))
+    perm = np.asarray(ot.perm)
+    return OutputTransform(squash=base.squash, mean_dim=base.mean_dim, perm=ot.perm,
+                           scale=s0[perm] * ot.scale, bias=b0[perm] * ot.scale + ot.bias)
 
 
 def _warn_if_untransformed(policy):
@@ -580,9 +628,12 @@ def _warn_if_untransformed(policy):
     RAW head. Only obs/action DIMENSION mismatches are auto-caught, so a wrong normalization
     or missing action post-processing is silent -- this is the one place we flag it.
     """
-    spec = policy.obs_spec
-    has_norm = spec is not None and (spec.mean is not None or spec.std is not None)
-    ot = policy.out_transform
+    # a stateful wrapper (adapters/stateful.py) keeps its head network in ``.mlp``; the
+    # normalization can sit on either the frame spec or the head's stacked spec
+    head = getattr(policy, "mlp", policy)
+    specs = [sp for sp in (policy.obs_spec, head.obs_spec) if sp is not None]
+    has_norm = any(sp.mean is not None or sp.std is not None for sp in specs)
+    ot = head.out_transform
     has_action_tf = ot is not None and (
         bool(ot.squash)
         or bool(np.any(np.asarray(ot.scale) != 1.0))
@@ -996,9 +1047,28 @@ def from_isaaclab_cfg(env_cfg, agent_cfg=None, *, robot="go1", joint_names=None)
     pol = (cfg.get("observations") or {}).get("policy") or {}
     reserved = {"concatenate_terms", "enable_corruption", "history_length",
                 "flatten_history_dim", "concatenate_dim"}
-    if pol.get("history_length"):
+    # Observation history (adapters/stateful.py). Isaac Lab keeps H frames per term and,
+    # with flatten_history_dim (the default), flattens each term's history before
+    # concatenating terms: the contract's "term" layout. A per-term history_length
+    # overrides the group's; BreakPoint needs one length for every term.
+    lengths = {int(t.get("history_length") or pol.get("history_length") or 0)
+               for k, t in pol.items() if k not in reserved and isinstance(t, dict)}
+    lengths.discard(0)
+    if len(lengths) > 1:
         res.add("fatal", "observations.policy.history_length",
-                f"{pol['history_length']}: stacked observation history is not supported")
+                f"terms use different history lengths {sorted(lengths)}; BreakPoint "
+                f"stacks one length for every term")
+    elif lengths and max(lengths) > 1:
+        if pol.get("flatten_history_dim") is False:
+            res.add("fatal", "observations.policy.flatten_history_dim",
+                    "false: the policy takes a (history, dim) tensor per term, not a flat "
+                    "vector; only flattened history is supported")
+        else:
+            res.contract["history"] = {"length": max(lengths), "layout": "term",
+                                       "fill": "first"}
+            res.add("info", "observations.policy.history_length",
+                    f"{max(lengths)}: stacked per term (Isaac Lab flatten_history_dim), "
+                    f"history filled with the first observation at reset")
     if pol.get("enable_corruption"):
         res.add("warn", "observations.policy.enable_corruption",
                 "training-time obs noise is not reproduced; BreakPoint applies the "
@@ -1088,6 +1158,15 @@ def _agent_rows(res, agent_cfg):
     if agent.get("clip_actions") is not None:
         res.add("warn", "agent.clip_actions",
                 f"{agent['clip_actions']}: BreakPoint does not clip actions")
+    cls = str(pol.get("class_name") or "")
+    if "Recurrent" in cls:
+        rnn = str(pol.get("rnn_type") or "lstm").lower()
+        res.hints["recurrent"] = {"type": rnn, "hidden": pol.get("rnn_hidden_dim"),
+                                  "layers": pol.get("rnn_num_layers")}
+        res.add("info", "agent.policy.class_name",
+                f"{cls} ({rnn}): supported as a params: export of the actor state_dict "
+                f"(memory_a.rnn.* and actor.* tensors in one .npz); the hidden state "
+                f"resets to zeros each episode, as in RSL-RL")
 
 
 def from_rsl_rl_run(run_dir, *, robot="go1", joint_names=None):

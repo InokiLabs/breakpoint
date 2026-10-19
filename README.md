@@ -16,8 +16,10 @@ On top of the search engine sit three evidence layers:
   seeds. Every cell reports falls, a fall rate and a 95% interval, so two policies rated
   on the same battery are directly comparable.
 - **CI gate** (`breakpoint gate`): pytest for robot policies. A candidate checkpoint is
-  run on the same conditions and seeds as the baseline, and the build fails when the
-  candidate falls where the baseline survived. Ships as a GitHub Action (`action.yml`).
+  run on the same conditions and seeds as the baseline, and the build fails only when
+  exact paired tests show it falls more, with false alarms held at or below 5%. Suspect
+  conditions are re-run on fresh seeds before the verdict. Ships as a GitHub Action
+  (`action.yml`).
 - **Signed reports** (`breakpoint keys` / `sign` / `verify`): ed25519 attestations over
   a canonical JSON report, so anyone holding the public key can check a rating was not
   edited after it was produced.
@@ -96,7 +98,10 @@ run writes `failures.json` (every evaluated world) and `families.json`.
 ### Bring your own policy
 
 Policies: `onnx:/path/policy.onnx`, `params:/path/weights.npz` (named numpy arrays, e.g.
-a torch `state_dict` dumped to numpy), or a brax params `.pkl`. Robots: `go1`, `barkour`,
+a torch `state_dict` dumped to numpy), or a brax params `.pkl`. Policies trained on a
+stack of past observations (Isaac Lab `history_length`, legged_gym-style frame stacks)
+and RSL-RL recurrent (LSTM/GRU) actors are supported; see "Stateful policies" in
+`docs/byo-policy.md`. Robots: `go1`, `barkour`,
 `g1`, `spot`, `t1`, `h1`, `berkeley_humanoid`, or a path to your own `.urdf`. Trained in
 Isaac Lab, RSL-RL, legged_gym or unitree_rl_gym? `breakpoint init --from rsl_rl <run dir>`
 writes a policy contract (observation order, scales, PD gains, training randomization).
@@ -122,9 +127,16 @@ breakpoint gate --robot go1 --baseline checkpoints/prod.pkl --candidate checkpoi
     --battery legged-quadruped-v1 --budget smoke --out gate.json
 ```
 
-Exit 0 means the candidate survives every condition the baseline survived; exit 1 means
-a regression (the newly failing cells are printed). For GitHub Actions, copy
-`examples/github-workflow.yml` into your policy repo. Details: `docs/ci-gate.md`.
+Exit 0 means no evidence the candidate falls more than the baseline; exit 1 means a
+regression (the cells are printed); exit 2 means the gate could not run (never reported
+as a regression). The verdict is an exact paired sign test, pooled across the battery and
+Holm-adjusted per cell, so false alarms stay at or below `--alpha` (default 0.05) however
+many cells there are; cells that got worse without enough evidence are re-run alone on
+fresh seeds (`--escalate-to`, 32 by default for `standard`). With 8 seeds and 15 cells the
+original "newly failing cell" rule raised a false alarm on about half of all builds where
+nothing changed; it is still available as `--decision rule`. Measured false-alarm and
+detection rates: `docs/ci-gate.md`. For GitHub Actions, copy
+`examples/github-workflow.yml` into your policy repo.
 
 **Sign and verify** a report (needs `.[attest]`):
 
@@ -149,7 +161,12 @@ key verifies it. Details: `docs/attest.md`.
 - **Per-target validation.** Results for one robot or simulator configuration do not
   generalise to another without re-running.
 - **Scope.** Velocity-tracking locomotion (quadrupeds and humanoids) plus the Panda
-  pick-cube target. No vision, recurrent or VLA policies; no heightfield terrain yet.
+  pick-cube target. MLP, observation-history and LSTM/GRU policies; no vision or VLA
+  policies; no heightfield terrain yet.
+- **Not a new idea.** Searching environment parameters for a fixed policy's failures is
+  established in research (e.g. adversarial attacks on quadruped controllers, RSS 2024;
+  RoboGate, 2026). What BreakPoint adds is the engineering around it; `docs/landscape.md`
+  compares it with the alternatives, including a measured head-to-head.
 - **Synthetic benchmarks are labelled.** Several docs (`docs/contract.md`,
   `docs/coverage.md`, `docs/famrisk.md`, `docs/mincause.md`, `docs/riskcert.md`)
   validate methods on planted, synthetic landscapes or scrambles of a real policy. They

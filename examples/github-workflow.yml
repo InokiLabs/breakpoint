@@ -19,8 +19,10 @@ on:
       - "checkpoints/**"
 
 jobs:
-  # GitHub-hosted runners are CPU-only: they fit `budget: smoke` (2 seeds, horizon <= 150,
+  # GitHub-hosted runners are CPU-only: they fit `budget: smoke` (4 seeds, horizon <= 150,
   # a few minutes). A smoke gate is a screen for gross regressions, not a rating.
+  # escalate-to re-runs only the cells that got worse on fresh seeds before deciding;
+  # it keeps false alarms <= alpha and costs a little CPU time when something is suspect.
   gate-smoke:
     runs-on: ubuntu-latest
     steps:
@@ -35,6 +37,7 @@ jobs:
           baseline: checkpoints/prod.pkl
           candidate: checkpoints/candidate.pkl
           budget: smoke
+          escalate-to: "16"
           tolerance: "0"
           python-version: "3.11"
           engine-ref: main
@@ -56,7 +59,7 @@ jobs:
           robot: go1
           baseline: checkpoints/prod.pkl
           candidate: checkpoints/candidate.pkl
-          budget: standard
+          budget: standard        # escalates suspect cells to 32 fresh seeds by default
       # Note: `pip install breakpoint-mjx[sim]` installs CPU jax. On the GPU runner, install
       # the CUDA build first (e.g. `pip install "jax[cuda12]"`) or bake it into the runner
       # image, or the gate silently runs on CPU (the report's run.backend says which).

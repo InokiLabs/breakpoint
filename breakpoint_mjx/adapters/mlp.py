@@ -14,8 +14,8 @@ this module imports with no jax present) and exposes the
 
 Scope: deterministic MLP control policies (the common RSL-RL / Isaac Lab / torch / ONNX
 export). For a Gaussian-policy export we reconstruct the MEAN (pre-tanh) action head, which
-is what a deterministic eval uses; stochastic sampling, recurrent state, and vision/CNN
-nets are out of scope (see module docstring in ``adapters/__init__``).
+is what a deterministic eval uses; stochastic sampling and vision/CNN nets are out of scope.
+History-stacked and recurrent policies wrap this class (``adapters/stateful.py``).
 """
 from __future__ import annotations
 

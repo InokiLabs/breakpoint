@@ -356,6 +356,10 @@ class PolicyContract:
     # ``operational`` (the training domain-randomization ranges as a riskcert ODD,
     # ``{theta_dim: {range: [lo, hi]}}``). Carried so to_dict / to_yaml round-trip them.
     extras: dict = field(default_factory=dict)
+    # Observation history (adapters/stateful.py): None, or {length, layout, fill, order}.
+    # ``term_dims`` are the per-term widths of ONE frame, in term order.
+    history: object = None
+    term_dims: tuple = ()
 
     @property
     def obs_dim(self):
@@ -391,6 +395,8 @@ class PolicyContract:
         if self.default_joint_pos is not None:
             d["default_joint_pos"] = [float(x) for x in self.default_joint_pos]
         d["obs"] = [dict(t) for t in self.terms]
+        if self.history:
+            d["history"] = dict(self.history)
         if self.action:
             d["action"] = dict(self.action)
         for k in EXTRA_BLOCKS:
@@ -431,14 +437,6 @@ def _clean_scale(v):
 # Contract blocks kept verbatim alongside the obs/action map (see PolicyContract.extras).
 EXTRA_BLOCKS = ("actuation", "operational")
 
-HISTORY_UNSUPPORTED = (
-    "stacked observation history is not supported: the shared rollout "
-    "(breakpoint_mjx/rollout.py) calls a STATELESS policy_fn(obs, key) inside the "
-    "evaluator's vmap and its scan carry holds only (env state, action latency buffer, "
-    "key), so there is nowhere to keep a per-env obs ring buffer. A history-stacked policy "
-    "needs that carry extended first")
-
-
 def build_contract(spec, robot=None):
     """Resolve a declarative contract (dict) against a target into a ``PolicyContract``.
 
@@ -456,6 +454,7 @@ def build_contract(spec, robot=None):
           - {term: joint_pos_rel}
           - {term: joint_vel, scale: 0.05}
           - {term: last_action}
+        history: {length: 5, layout: term}               # optional (adapters/stateful.py)
         normalization: {mean: [...], std: [...]}          # optional
 
     Joint terms are permuted from the target's actuator order into the policy's order
@@ -468,9 +467,9 @@ def build_contract(spec, robot=None):
     """
     if "raw" in spec:
         raise ValueError("raw-form contracts have no terms; use ObsSpec.from_yaml")
-    hist = spec.get("history")
-    if hist and int((hist or {}).get("length", 1) if isinstance(hist, dict) else hist) > 1:
-        raise ValueError(f"contract history {hist}: {HISTORY_UNSUPPORTED}")
+    from breakpoint_mjx.adapters.stateful import parse_history
+
+    history = parse_history(spec.get("history"))
     extras = {}
     if spec.get("actuation"):
         from breakpoint_mjx.adapters.actuation import parse_actuation
@@ -512,7 +511,7 @@ def build_contract(spec, robot=None):
             warns.append(f"action.{k}={act[k]} is not applied: BreakPoint does not clip "
                          f"policy actions (the target's actuator limits still apply)")
 
-    idx, off, sc, terms = [], [], [], []
+    idx, off, sc, terms, term_dims = [], [], [], [], []
     for raw_t in spec.get("obs") or []:
         t = dict(raw_t) if isinstance(raw_t, dict) else {"term": str(raw_t)}
         name = t.get("term")
@@ -557,6 +556,7 @@ def build_contract(spec, robot=None):
         idx.append(ii)
         off.append(oo)
         sc.append(ss)
+        term_dims.append(int(len(ii)))
         clean = {"term": t["term"]}
         if canon is None:
             clean.update(start=int(t["start"]), dim=int(t["dim"]))
@@ -585,7 +585,7 @@ def build_contract(spec, robot=None):
         action=action_out, normalization=normalization, warnings=warns,
         default_joint_pos=(None if spec.get("default_joint_pos") is None
                            else [float(x) for x in pol_default]),
-        extras=extras)
+        extras=extras, history=history, term_dims=tuple(term_dims))
 
 
 def _read_yaml(path_or_dict):

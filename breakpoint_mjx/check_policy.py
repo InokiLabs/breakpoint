@@ -289,7 +289,10 @@ def load_policy(target, env, spec, opts=None):
                     os.environ.pop("BP_OBS_SPEC", None)
                 else:
                     os.environ["BP_OBS_SPEC"] = prev
+        # a bound MLPPolicy.policy_fn, or a stateful policy object (history / recurrent)
         mlp = getattr(fn, "__self__", None)
+        if mlp is None and callable(getattr(fn, "init_carry", None)):
+            mlp = fn
         norm, obs_map = None, None
         if mlp is not None and getattr(mlp, "obs_spec", None) is not None:
             sp = mlp.obs_spec

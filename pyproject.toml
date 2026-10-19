@@ -24,7 +24,11 @@ classifiers = [
 dependencies = ["numpy>=1.24", "pyyaml>=6.0"]
 
 [project.optional-dependencies]
-sim = ["mujoco>=3.2", "jax>=0.4.30,<0.9", "brax>=0.12", "mujoco_playground>=0.0.4"]
+# Everything the engine imports at run time. flax is pinned because newer releases raise
+# their jax floor past <0.9 (see requirements.txt for the full story).
+sim = ["mujoco>=3.2", "mujoco-mjx>=3.2", "jax>=0.4.30,<0.9", "brax>=0.12", "flax==0.12.6",
+       "playground>=0.0.4", "evosax>=0.1.6", "scikit-learn>=1.4", "mediapy>=1.2",
+       "imageio[ffmpeg]>=2.34"]
 onnx = ["onnx>=1.16"]
 attest = ["cryptography>=42"]   # ed25519 report signing (breakpoint keys/sign/verify)
 llm = ["anthropic>=0.69", "httpx>=0.27"]
