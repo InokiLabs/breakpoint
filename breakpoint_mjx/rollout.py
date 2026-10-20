@@ -5,9 +5,8 @@ rendered failure reproduces the scored failure bit-for-bit: same physics, same
 per-step key split, same latency buffer, same summary. The renderer can no longer
 drift from the evaluator because there is exactly one step loop.
 
-Executed on Colab; a CPU-only box can't import jax, so this module is validated by
-careful reading + the GPU smoke tests (a later task asserts the determinism
-invariant below).
+Runs on CPU jax as well as GPU; tests/test_gpu_smoke.py asserts the determinism
+invariant below on a real simulator.
 """
 from __future__ import annotations
 

@@ -354,7 +354,7 @@ def replay_family(backend, space, family, *, k, score_fn, threshold, thresholds,
     is anything with ``simulate(record, collect_states=...)`` and a settable
     ``early_stop``, so this is CPU-unit-testable with a fake."""
     from breakpoint_mjx.mincause import ALPHA, FAIL_BAR, cp_lower, cp_upper, look_schedule
-    from breakpoint_mjx.render import fall_step, min_floor_height
+    from breakpoint_mjx.failure import fall_step, min_floor_height
 
     alpha = ALPHA if alpha is None else alpha
     bar = FAIL_BAR if bar is None else bar
