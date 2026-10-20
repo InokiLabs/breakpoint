@@ -1,12 +1,12 @@
-"""Phase 4: random + CMA-ES adversarial search maximizing transfer-weighted
-failure score, with persistence. The pure helper turns a batched trajectory into
+"""Phase 4: random + CMA-ES adversarial search maximizing plausibility-weighted
+(``transfer.joint_plausibility``) failure score, with persistence. The pure helper turns a batched trajectory into
 per-env scores; the search loops call the (jit'd) evaluate once per batch/generation."""
 from __future__ import annotations
 import json, os, time
 import numpy as np
 
 from breakpoint_mjx.objectives import LEGGED_OBJECTIVE
-from breakpoint_mjx.transfer import transfer_likelihood, severity_from_score
+from breakpoint_mjx.transfer import joint_plausibility, severity_from_score
 from breakpoint_mjx.schemas import FailureRecord
 
 
@@ -58,7 +58,7 @@ def _records(space, thetas, scores, sigs, comps, seed, tag, start_id, batch_key)
     thetas = np.asarray(thetas)
     for i in range(len(scores)):
         named = space.vector_to_named(thetas[i])
-        tr = transfer_likelihood(named, space)
+        tr = joint_plausibility(named, space)
         recs.append(FailureRecord(
             theta_vector=[float(x) for x in thetas[i]],
             theta_named={k: float(v) for k, v in named.items()},
@@ -137,7 +137,7 @@ def cmaes_search(evaluate, space, cfg, key, seed_theta=None, objective=None):
         traj = evaluate(thetas, ek)
         scores, sigs, comps = scores_from_trajectories(traj, cfg.thresholds, cfg.horizon, objective)
         named = [space.vector_to_named(np.asarray(thetas)[i]) for i in range(len(scores))]
-        transfer = np.array([transfer_likelihood(nm, space) for nm in named])
+        transfer = np.array([joint_plausibility(nm, space) for nm in named])
         weighted = scores * transfer                          # transfer-weighted objective
         state, _ = es.tell(tell_k, population, -jnp.asarray(weighted), state, params)  # minimizes
         recs += _records(space, thetas, scores, sigs, comps, cfg.seed, "cmaes", len(recs), ek)

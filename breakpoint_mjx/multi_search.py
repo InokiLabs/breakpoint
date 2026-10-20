@@ -37,7 +37,7 @@ from __future__ import annotations
 import numpy as np
 
 from breakpoint_mjx.search import _records, scores_from_trajectories, theta_to_cmaes_mean
-from breakpoint_mjx.transfer import transfer_likelihood
+from breakpoint_mjx.transfer import joint_plausibility
 
 
 def restart_means(space, restarts, seed, seed_theta=None, spread=1.0):
@@ -197,7 +197,7 @@ def multi_cmaes_search(evaluate, space, cfg, key, restarts=16, seed_theta=None,
 
         th_np = np.asarray(thetas)
         transfer = np.array([
-            transfer_likelihood(space.vector_to_named(th_np[i]), space)
+            joint_plausibility(space.vector_to_named(th_np[i]), space)
             for i in range(th_np.shape[0])
         ])
         weighted = np.asarray(scores) * transfer

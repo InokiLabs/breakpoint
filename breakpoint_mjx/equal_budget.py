@@ -5,7 +5,7 @@ evaluation would miss, when both spend the SAME number of rollouts, and when "be
 judged by metrics the search does NOT optimize?
 
 Why this module exists: ``scripts/benchmark_search.py`` scores "plausible yield" with the
-same ``transfer.transfer_likelihood`` heuristic that CMA-ES maximizes (score * transfer),
+plausibility heuristic CMA-ES maximizes (score * ``transfer.joint_plausibility``),
 so directed-beats-random on that metric is partly circular; and the pipeline's built-in
 random population (pipeline.py, ``random_search`` with ``n_eval=popsize``) is one small
 batch, not an equal budget.
