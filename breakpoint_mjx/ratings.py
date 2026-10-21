@@ -40,6 +40,8 @@ from pathlib import Path
 import numpy as np
 import yaml
 
+from breakpoint_mjx.obs_adversary import OBS_PERTURBATION_MODEL
+
 SCHEMA = "breakpoint.report/v1"
 BATTERY_DIR = Path(__file__).resolve().parent / "batteries"
 
@@ -324,7 +326,10 @@ def build_report(*, battery: Battery, robot, policy, cells, backend, seeds, hori
         "schema": SCHEMA,
         "kind": "rating",
         "battery": {"id": battery.id, "sha256": battery.sha256},
-        "engine": {"version": str(engine_version), "commit": commit},
+        # obs_model: which observation-adversary semantics produced the cells (ratings
+        # under different models are not comparable even on the same battery sha).
+        "engine": {"version": str(engine_version), "commit": commit,
+                   "obs_model": OBS_PERTURBATION_MODEL},
         "robot": robot,
         "policy": dict(policy),
         "run": {"date": date or _dt.datetime.now(_dt.timezone.utc).isoformat(

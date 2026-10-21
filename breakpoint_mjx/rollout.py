@@ -16,6 +16,12 @@ import jax.numpy as jnp
 # Maximum supported latency buffer depth in steps (buffer size = LMAX + 1).
 LMAX = 4
 
+# The per-step observation adversary rule (sensor channels only, sample-and-hold
+# dropout) is pure array code shared with the C MuJoCo / Genesis re-sims.
+from breakpoint_mjx.obs_adversary import (  # noqa: E402,F401
+    OBS_PERTURBATION_MODEL, obs_sensor_mask, perturb_obs, set_obs_non_sensor,
+)
+
 
 def env_key(batch_key, i):
     """Canonical per-env key derivation: fold_in(batch_key, i).
@@ -78,10 +84,10 @@ def rollout_one(
     rollout_scalars are read by meaning; every dim degrades to a no-op (0.0) when a
     space does not declare it (``.get(name, 0.0)``), so a target without a given
     adversary is unaffected. Recognized ROLLOUT dims (all pure-jax + vmappable):
-      * obs_noise_scale   -- per-step Gaussian noise on obs["state"].
+      * obs_noise_scale   -- per-step Gaussian noise on the sensor channels of obs["state"].
       * latency_steps     -- action ring-buffer delay (0..LMAX).
-      * obs_dropout_prob  -- per-step Bernoulli channel dropout on obs["state"]
-                             (each channel zeroed with prob p; obs-noise key stream).
+      * obs_dropout_prob  -- per-step Bernoulli channel dropout on the sensor channels
+                             (a dropped channel holds its last delivered reading).
       * obs_bias_scale    -- per-EPISODE constant bias added to obs["state"] (sampled
                              once at reset from a key child; models a miscalibrated sensor).
       * push_mag          -- magnitude (m/s) of a gait-timed velocity impulse on the base.
@@ -89,7 +95,8 @@ def rollout_one(
 
     Step semantics (identical in both paths -- the divergence #6 fixes):
       key, nk_noise, nk_policy = split(key, 3)
-      state = (obs["state"] + obs_noise_scale*normal(nk_noise) + obs_bias) * dropout_mask
+      reading = held if dropped else obs["state"] + obs_noise_scale*normal(nk_noise) + obs_bias
+      (sensor channels only; see perturb_obs), and held = reading
       act = policy_fn({**obs, "state": state}, nk_policy)
       latency ring buffer: newest at index 0, delayed = buf[lat]
       at step==round(push_step_frac*(H-1)): base qvel[:3] += push_mag * dir (key-sampled)
@@ -101,9 +108,8 @@ def rollout_one(
     stateful is a trace-time Python check: a stateless policy compiles to exactly the
     previous program.
 
-    Nominal-safe: with every new adversary at its nominal 0 the rollout is
-    byte-identical to the pre-adversary path (dropout mask is all-ones, bias/push are 0),
-    so eval_nominal and existing behavior do not shift.
+    Nominal-safe: with every adversary at its nominal 0 the policy sees the clean obs
+    exactly (nothing is dropped, bias/push are 0), so eval_nominal does not shift.
 
     Returns
     -------
@@ -149,26 +155,30 @@ def rollout_one(
         jnp.round(push_step_frac * (horizon - 1)).astype(jnp.int32), 0, horizon - 1
     )
 
+    sensor_mask = obs_sensor_mask(env, state_shape[-1])
+    if sensor_mask is not None:
+        sensor_mask = jnp.asarray(sensor_mask)
+    # The reset reading: clean reset obs plus the episode's sensor bias (no per-step noise
+    # or dropout is drawn for it: those keys belong to step 0). It seeds the stateful
+    # policy's carry and is what a channel dropped at step 0 holds.
+    clean0 = _obs_state(st0.obs)
+    held0 = perturb_obs(jnp, clean0, 0.0, obs_bias, jnp.zeros(state_shape, bool),
+                        clean0, sensor_mask)[0]
     stateful = callable(getattr(policy_fn, "init_carry", None))
-    # The carry starts from the clean reset obs plus the episode's sensor bias (no
-    # per-step noise or dropout is drawn for it: those keys belong to step 0).
-    pcarry0 = (policy_fn.init_carry(_obs_with_state(st0.obs, _obs_state(st0.obs) + obs_bias))
-               if stateful else None)
+    pcarry0 = (policy_fn.init_carry(_obs_with_state(st0.obs, held0)) if stateful else None)
 
     def body(carry, step_idx):
-        st, buf, key, pcarry = carry
+        st, buf, key, pcarry, held = carry
         key, nk_noise, nk_policy = jax.random.split(key, 3)
         # Observation adversaries all draw from the obs-noise key stream (nk_noise) so
-        # they stay deterministic + vmappable. Gaussian noise uses nk_noise directly (so
-        # obs_noise-only behavior is unchanged vs. before); dropout uses a folded child.
+        # they stay deterministic + vmappable. Gaussian noise uses nk_noise directly;
+        # dropout uses a folded child.
         state = _obs_state(st.obs)
         gauss = obs_noise_scale * jax.random.normal(nk_noise, state.shape)
-        keep = (
-            jax.random.uniform(jax.random.fold_in(nk_noise, 1), state.shape)
-            >= obs_dropout_prob
-        ).astype(state.dtype)
-        # Dropout zeros channels LAST, so a dropped channel reads exactly 0 (not noise).
-        obs = _obs_with_state(st.obs, (state + gauss + obs_bias) * keep)
+        dropped = (jax.random.uniform(jax.random.fold_in(nk_noise, 1), state.shape)
+                   < obs_dropout_prob)
+        reading, held = perturb_obs(jnp, state, gauss, obs_bias, dropped, held, sensor_mask)
+        obs = _obs_with_state(st.obs, reading)
         if stateful:
             act, pcarry = policy_fn(obs, nk_policy, pcarry)
         else:
@@ -210,12 +220,12 @@ def rollout_one(
             # Trace-time bool like collect_states, so eval throughput is untouched.
             summary = {**summary, "obs_state": _obs_state(obs), "action": act}
         out = (summary, st) if collect_states else summary
-        return (st, buf, key, pcarry), out
+        return (st, buf, key, pcarry, held), out
 
     # xs = arange(H) so `body` gets the step index (drives the gait-timed push); this is
     # also the scan length. With push_mag=0 the step index is unused, so nominal is a no-op.
-    (_, _, _, _), scanned = jax.lax.scan(body, (st0, buf0, key, pcarry0),
-                                         jnp.arange(horizon))
+    _, scanned = jax.lax.scan(body, (st0, buf0, key, pcarry0, held0),
+                              jnp.arange(horizon))
 
     if collect_states:
         traj, stacked = scanned

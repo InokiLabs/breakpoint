@@ -139,6 +139,7 @@ from breakpoint_mjx.targets.barkour import BARKOUR  # noqa: E402
 from breakpoint_mjx.targets.g1 import G1  # noqa: E402
 from breakpoint_mjx.targets.panda import PANDA  # noqa: E402
 from breakpoint_mjx.targets.generic import make_legged_target  # noqa: E402
+from breakpoint_mjx.targets._legged import phase_humanoid_non_sensor  # noqa: E402
 
 # Factory-made legged targets (targets/generic.py): one line per robot. Env ids +
 # base-body names + fall thresholds are best-effort from the Playground registry/MJCFs;
@@ -152,21 +153,30 @@ SPOT = make_legged_target(
     "spot", "SpotFlatTerrainJoystick",
     base_candidates=("body", "trunk", "base", "torso"),
     thresholds={"trunk_height_min": 0.26},   # Spot body stands ~0.52 m
+    # state ends [..., last_act 12, command 3]
+    obs_non_sensor=lambda env: ([(-(int(env.action_size) + 3), int(env.action_size) + 3)],
+                                None),
 )
 H1 = make_legged_target(
     "h1", "H1JoystickGaitTracking",
     base_candidates=("pelvis", "torso_link", "base", "torso"),
     thresholds={"trunk_height_min": 0.50},   # H1 pelvis stands ~0.98 m
+    # JoystickGaitTracking state = [gyro 3, gravity 3, joint pos 19, joint vel 19,
+    # last_act 19, command 3, qvel/qpos-error history, contact 2, phase 4, gait_freq 1,
+    # gait 1, foot_height 1]: last_act + command at 44, the gait clock is the final 7.
+    obs_non_sensor=lambda env: ([(44, 22), (-7, 7)], None),
 )
 T1 = make_legged_target(
     "t1", "T1JoystickFlatTerrain",
     base_candidates=("Trunk", "trunk", "torso", "pelvis", "base"),
     thresholds={"trunk_height_min": 0.35},   # Booster T1 trunk stands ~0.7 m
+    obs_non_sensor=lambda env: (phase_humanoid_non_sensor(env), None),
 )
 BERKELEY_HUMANOID = make_legged_target(
     "berkeley_humanoid", "BerkeleyHumanoidJoystickFlatTerrain",
     base_candidates=("torso", "pelvis", "base", "trunk"),
     thresholds={"trunk_height_min": 0.30},   # ~0.85 m robot, base ~0.6 m
+    obs_non_sensor=lambda env: (phase_humanoid_non_sensor(env), None),
 )
 
 TARGETS: dict[str, Target] = {

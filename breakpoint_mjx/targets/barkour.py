@@ -58,7 +58,12 @@ def load_env():
     """
     from mujoco_playground import registry
 
-    return registry.load(ENV_NAME, config_overrides={"impl": IMPL})
+    from breakpoint_mjx.obs_adversary import set_obs_non_sensor
+
+    env = registry.load(ENV_NAME, config_overrides={"impl": IMPL})
+    # obs is a 15-frame history, newest first; each 31-dim frame is [yaw rate 1,
+    # gravity 3, command 3, joint angles 12, last_act 12] (BarkourJoystick._get_obs).
+    return set_obs_non_sensor(env, [(4, 3), (19, 12)], frame=31)
 
 
 def resolve_constants(env):

@@ -44,6 +44,15 @@ LEGGED_MODEL_FIELDS = (
 )
 
 
+def phase_humanoid_non_sensor(env):
+    """Non-sensor obs channels of Playground's phase-clocked joystick humanoids (G1, T1,
+    Berkeley Humanoid): ``state = [linvel 3, gyro 3, gravity 3, command 3, joint angles N,
+    joint vel N, last_act N, phase 4]``, so the command sits at 9 and last_act + phase
+    are the final N + 4 channels. For ``rollout.set_obs_non_sensor``."""
+    n = int(env.action_size)
+    return [(9, 3), (-(n + 4), n + 4)]
+
+
 def _numeric_namespace():
     """Return the numeric namespace for the floor-slope trig: ``jax.numpy`` on Colab
     (traced scalars under vmap) or ``numpy`` on a CPU-only box (python-float scalars in

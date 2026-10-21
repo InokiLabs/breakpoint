@@ -94,7 +94,11 @@ def load_env():
     """Load the G1 flat-terrain joystick env, forcing the MJX JAX backend."""
     from mujoco_playground import registry
 
-    return registry.load(ENV_NAME, config_overrides={"impl": IMPL})
+    from breakpoint_mjx.obs_adversary import set_obs_non_sensor
+    from breakpoint_mjx.targets._legged import phase_humanoid_non_sensor
+
+    env = registry.load(ENV_NAME, config_overrides={"impl": IMPL})
+    return set_obs_non_sensor(env, phase_humanoid_non_sensor(env))
 
 
 def resolve_constants(env):

@@ -431,7 +431,8 @@ class MujocoCBackend:
         Mirrors `rollout_one` step-for-step so `failure_score` is comparable -- the same
         recorded key, the same per-step 3-way split, the same episode-level adversary
         draws (fold_in(key, 1) obs bias, fold_in(key, 2) push direction), the same
-        noise -> bias -> dropout order, the same latency ring buffer (newest at index 0,
+        noise -> bias -> dropout (sample-and-hold) order on the same sensor channels, the same
+        latency ring buffer (newest at index 0,
         delayed = buf[lat]), the same gait-timed push before the step, and the same
         per-target ``summarize`` hook. The ONLY intended difference is the integrator:
         C MuJoCo instead of MJX.
@@ -458,6 +459,7 @@ class MujocoCBackend:
         import mujoco
         from mujoco import mjx
 
+        from breakpoint_mjx.obs_adversary import obs_sensor_mask, perturb_obs
         from breakpoint_mjx.rollout import _obs_state, _obs_with_state
 
         key = self._key(record)  # raises on a legacy record (no exact-repro key)
@@ -506,8 +508,12 @@ class MujocoCBackend:
         # from the reset obs plus the episode's sensor bias.
         pol = fast.policy if fast else self.policy_fn
         stateful = callable(getattr(self.policy_fn, "init_carry", None))
-        pcarry = (self.policy_fn.init_carry(_obs_with_state(
-            state.obs, np.asarray(_obs_state(state.obs)) + obs_bias)) if stateful else None)
+        sensor_mask = obs_sensor_mask(env, vec_shape[-1])
+        clean0 = np.asarray(_obs_state(state.obs))
+        held = perturb_obs(np, clean0, 0.0, obs_bias, np.zeros(vec_shape, bool), clean0,
+                           sensor_mask)[0]
+        pcarry = (self.policy_fn.init_carry(_obs_with_state(state.obs, held))
+                  if stateful else None)
         calls = [0]
         steps = []
         states = [state] if collect_states else None
@@ -515,11 +521,11 @@ class MujocoCBackend:
             key, nk_noise, nk_policy = self._split3(key)
             vec = np.asarray(_obs_state(state.obs))
             gauss = obs_noise_scale * self._normal(nk_noise, vec.shape)
-            keep = (
-                self._uniform(self._fold_in(nk_noise, 1), vec.shape) >= obs_dropout_prob
-            ).astype(vec.dtype)
-            # Dropout zeros channels LAST, so a dropped channel reads exactly 0 (rollout_one).
-            perturbed = _obs_with_state(state.obs, (vec + gauss + obs_bias) * keep)
+            dropped = (self._uniform(self._fold_in(nk_noise, 1), vec.shape)
+                       < obs_dropout_prob)
+            # Same sensor-only, sample-and-hold rule as rollout_one (one shared function).
+            reading, held = perturb_obs(np, vec, gauss, obs_bias, dropped, held, sensor_mask)
+            perturbed = _obs_with_state(state.obs, reading.astype(vec.dtype))
             if stateful:
                 act, pcarry = pol(perturbed, nk_policy, pcarry)
             else:
