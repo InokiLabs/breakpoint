@@ -12,9 +12,10 @@ passed (p = 0.006), caught every larger one, and raised no alarm on an identical
     breakpoint gate --robot go1 --baseline prod.pkl --candidate new.pkl \\
         --battery boundary.yaml
 
-HOW IT IS BUILT, baseline only. Conditions are sampled uniformly inside the near-nominal box
-(each plausible band shrunk toward nominal to 25% of its width on each side) and inside the
-plausible band itself, the same boxes the benchmark used. Every condition runs on
+HOW IT IS BUILT, baseline only. Conditions are sampled uniformly inside the plausible band
+(``regimes``; the near-nominal box, each band shrunk toward nominal to 25% of its width on
+each side, is opt-in: on the go1 demo policy it yielded no boundary condition, since a
+decent policy rarely falls that close to nominal). Every condition runs on
 ``select_seeds`` selection seeds; the ones whose fall rate lies in ``p_range`` are kept (up
 to ``max_cells``, a seeded random subset when more qualify). The candidate is never looked
 at, and the written battery runs on fresh seeds disjoint from the selection seeds (and from
@@ -43,6 +44,7 @@ import numpy as np
 from breakpoint_mjx import gate, ratings
 
 REGIMES = ("near_nominal", "conservative")
+DEFAULT_REGIMES = ("conservative",)
 REGIME_PREFIX = {"near_nominal": "near", "conservative": "plaus"}
 NEAR_NOMINAL_FRAC = 0.25
 
@@ -81,7 +83,7 @@ def _clean(space, dim: str, v: float) -> float:
     return float(min(max(v, d.plausible[0]), d.plausible[1]))
 
 
-def sample_conditions(space, n: int, regimes=REGIMES, rng=None) -> list:
+def sample_conditions(space, n: int, regimes=DEFAULT_REGIMES, rng=None) -> list:
     """``n`` conditions split evenly over ``regimes`` -> [(cell_id, {dim: value})]. Dims
     that land on nominal are left out (the battery convention); latency is whole steps."""
     rng = rng if rng is not None else np.random.default_rng(DEFAULTS["sample_seed"])
@@ -166,7 +168,7 @@ def build_boundary_battery(*, robot, baseline, battery=None, space=None,
                            select_seeds=DEFAULTS["select_seeds"],
                            p_range=DEFAULTS["p_range"], max_cells=DEFAULTS["max_cells"],
                            seeds=DEFAULTS["seeds"], sample_seed=DEFAULTS["sample_seed"],
-                           regimes=REGIMES, evaluate_fn=None, opts=None, log=print):
+                           regimes=DEFAULT_REGIMES, evaluate_fn=None, opts=None, log=print):
     """Sample, run the baseline on the selection seeds, keep the boundary conditions.
     -> (yaml_text or None, info). ``evaluate_fn(spec, cells, seeds, horizon) ->
     {cell_id: [0/1 per seed]}`` is the gate's evaluator interface (injected in tests)."""
@@ -222,8 +224,11 @@ def add_args(ap):
     ap.add_argument("--out", default="boundary-battery.yaml",
                     help="battery YAML to write (default: boundary-battery.yaml)")
     ap.add_argument("--conditions", type=int, default=DEFAULTS["n_conditions"],
-                    help=f"conditions to sample, split over near-nominal and plausible "
+                    help=f"conditions to sample, split evenly over --regimes "
                          f"(default {DEFAULTS['n_conditions']})")
+    ap.add_argument("--regimes", nargs="+", default=list(DEFAULT_REGIMES), choices=REGIMES,
+                    help="boxes to sample: conservative (the plausible band, default) "
+                         "and/or near_nominal (bands shrunk to 25%% around nominal)")
     ap.add_argument("--select-seeds", type=int, default=DEFAULTS["select_seeds"],
                     help=f"baseline seeds per condition for selection "
                          f"(default {DEFAULTS['select_seeds']})")
@@ -251,7 +256,8 @@ def build(args, evaluate_fn=None, space=None) -> int:
             robot=args.robot, baseline=args.baseline, battery=args.battery, space=space,
             n_conditions=args.conditions, select_seeds=args.select_seeds,
             p_range=(args.p_min, args.p_max), max_cells=args.max_cells, seeds=args.seeds,
-            sample_seed=args.sample_seed, evaluate_fn=evaluate_fn,
+            sample_seed=args.sample_seed, regimes=tuple(args.regimes),
+            evaluate_fn=evaluate_fn,
             opts=gate._adapter_opts(args))
     except (FileNotFoundError, ValueError, KeyError) as e:
         print(f"gate-boundary: error: {e.args[0] if e.args else e}", file=sys.stderr)

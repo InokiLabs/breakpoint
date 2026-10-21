@@ -143,9 +143,10 @@ breakpoint gate --robot go1 --baseline checkpoints/prod.pkl \
     --candidate checkpoints/candidate.pkl --battery boundary.yaml
 ```
 
-`gate-boundary` samples `--conditions` (default 128) conditions, half in the near-nominal
-box (each plausible band shrunk toward nominal to 25% of its width) and half in the
-plausible band. It runs the **baseline only** on 20 selection seeds and keeps the
+`gate-boundary` samples `--conditions` (default 128) conditions uniformly in the plausible
+band. `--regimes near_nominal conservative` also samples the near-nominal box (each band
+shrunk toward nominal to 25% of its width), split evenly. On the go1 demo policy that box
+produced no boundary condition, so it is off by default. It runs the **baseline only** on 20 selection seeds and keeps the
 conditions with a fall rate in [`--p-min`, `--p-max`] (default [0.10, 0.60]), up to
 `--max-cells` (default 24). The written battery runs `--seeds` (default 8) fresh seeds
 per cell. These seeds are disjoint from the selection seeds and the escalation seeds, so

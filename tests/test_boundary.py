@@ -57,6 +57,7 @@ def _args(b, out, **kw):
               conditions=B.DEFAULTS["n_conditions"], select_seeds=B.DEFAULTS["select_seeds"],
               p_min=0.1, p_max=0.6, max_cells=B.DEFAULTS["max_cells"],
               seeds=B.DEFAULTS["seeds"], sample_seed=B.DEFAULTS["sample_seed"],
+              regimes=list(B.DEFAULT_REGIMES),
               obs_spec=None, obs_norm=None, squash=None, activation=None,
               action_scale=None, mean_dim=None)
     ns.update(kw)
@@ -78,9 +79,11 @@ def test_regime_boxes_stay_inside_the_plausible_band():
 
 
 def test_sampled_conditions_load_as_a_battery():
-    conds = B.sample_conditions(SPACE, 40, rng=np.random.default_rng(0))
+    conds = B.sample_conditions(SPACE, 40, B.REGIMES, rng=np.random.default_rng(0))
     assert len(conds) == 40 and len({c for c, _ in conds}) == 40
     assert sum(c.startswith("near-") for c, _ in conds) == 20
+    default = B.sample_conditions(SPACE, 10, rng=np.random.default_rng(0))
+    assert all(c.startswith("plaus-") for c, _ in default)
     for _, theta in conds:
         if "latency_steps" in theta:
             assert theta["latency_steps"] == round(theta["latency_steps"])
@@ -194,3 +197,7 @@ def test_cli_registers_gate_boundary():
     a = cli.build_parser().parse_args(["gate-boundary", "--baseline", "a.pkl"])
     assert a.cmd == "gate-boundary" and a.func is cli.cmd_gate_boundary
     assert a.max_cells == 24 and a.seeds == 8 and a.out == "boundary-battery.yaml"
+    assert a.regimes == ["conservative"]
+    b = cli.build_parser().parse_args(["gate-boundary", "--baseline", "a.pkl",
+                                       "--regimes", "near_nominal", "conservative"])
+    assert b.regimes == ["near_nominal", "conservative"]
