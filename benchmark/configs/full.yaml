@@ -1,0 +1,42 @@
+# Full benchmark (the largest run planned for this CPU; see BENCHMARK_PLAN.md).
+# Directed plan fixed BEFORE running and not tuned: popsize 20 (above CMA-ES's default
+# 4 + 3 ln 16 = 12 for 16 dims), 10 generations so the covariance can adapt, 5 restarts
+# so one generation fills a batch of 100 (the shared batch shape for every method).
+name: full
+policies:
+  - name: go1-demo
+    robot: go1
+    checkpoint: breakpoint_mjx/assets/demo/go1_policy.pkl
+    note: Playground Go1 joystick PPO, native gains Kp 35
+  - name: go1-demo-kp25
+    robot: go1
+    checkpoint: breakpoint_mjx/assets/demo/go1_policy.pkl
+    obs_spec: docs/byo/bundled_go1_kp25.yaml
+    independent_policy: false
+    note: SAME weights as go1-demo, actuator gains Kp 25 / Kd 0.5 (deployment variant, not an independent policy)
+regimes: [near_nominal, conservative, broad]
+methods: [uniform, sobol, lhs_boundary, directed]
+repetitions: 5
+horizon: 500
+search_plan: {budget: 1000, restarts: 5, popsize: 20}  # directed: 5 x 20 x 10 generations
+cluster_eps: 0.10
+cluster_eps_sensitivity: [0.05, 0.2, 0.3]
+validation: {n: 20, first_k: 3, leaders: 8}
+replay: {per_run: 2, seeds: 8}
+regression:
+  policy: go1-demo
+  budget: standard            # gate presets: smoke | standard (the battery as declared)
+  alpha: 0.05
+  escalate_to: 32
+  pairs:
+    # No real checkpoint pair exists in the repository. To run the real comparison, add:
+    #   - {name: real-pair, kind: real, candidate: path/to/candidate.pkl}
+    - {name: real-pair, kind: real, candidate: checkpoints/go1_candidate.pkl}
+    - {name: null-identical, kind: identical}
+    - {name: synthetic-sigma0.1, kind: synthetic, sigma: 0.1, seed: 1}
+    - {name: synthetic-sigma0.3, kind: synthetic, sigma: 0.3, seed: 1}
+    - {name: synthetic-sigma0.5, kind: synthetic, sigma: 0.5, seed: 1}
+  adversarial: {regime: conservative, max_conditions: 24, seeds: 8}
+  # added in the improvement round (BENCHMARK_PLAN.md §12): conditions where the baseline
+  # fails sometimes, so a regression has room to show
+  boundary: {regimes: [near_nominal, conservative], p_range: [0.10, 0.60], max_conditions: 24, seeds: 8}

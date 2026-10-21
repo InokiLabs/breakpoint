@@ -1,0 +1,23 @@
+# Improvement round, TUNING runs (BENCHMARK_PLAN.md §12). Disjoint seeds (reps 100-101).
+name: tune
+policies:
+  - name: go1-demo
+    robot: go1
+    checkpoint: breakpoint_mjx/assets/demo/go1_policy.pkl
+    note: "Playground Go1 joystick PPO, native gains Kp 35"
+regimes: [near_nominal, conservative, broad]
+methods: [uniform, directed, nov_r06, nov_r12, restarts10, robust_k2, robust_k4]
+method_variants:
+  nov_r06:    {kind: novelty, radius: 0.6, strength: 0.8, label: "Directed + novelty r0.6"}
+  nov_r12:    {kind: novelty, radius: 1.2, strength: 0.8, label: "Directed + novelty r1.2"}
+  restarts10: {kind: restarts, restarts: 10, popsize: 10, label: "Directed 10x10 restarts"}
+  robust_k2:  {kind: robust, restarts: 5, popsize: 10, seeds_per_theta: 2, label: "Directed robust k=2"}
+  robust_k4:  {kind: robust, restarts: 5, popsize: 5, seeds_per_theta: 4, label: "Directed robust k=4"}
+repetitions: 2
+rep_offset: 100
+horizon: 500
+search_plan: {budget: 1000, restarts: 5, popsize: 20}
+cluster_eps: 0.10
+cluster_eps_sensitivity: [0.05, 0.2, 0.3]
+validation: {n: 20, first_k: 3, leaders: 8}
+replay: {per_run: 0, seeds: 8}

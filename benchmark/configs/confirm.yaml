@@ -1,0 +1,30 @@
+# Improvement round, CONFIRMATION (BENCHMARK_PLAN.md §12). nov_r12 was selected on the
+# tuning seeds (results/tune/selection.json). Baseline and directed runs for reps 0-4 are
+# symlinked from results/full/ (not re-run); only nov_r12 runs here.
+# Full benchmark (the largest run planned for this CPU; see BENCHMARK_PLAN.md).
+# Directed plan fixed BEFORE running and not tuned: popsize 20 (above CMA-ES's default
+# 4 + 3 ln 16 = 12 for 16 dims), 10 generations so the covariance can adapt, 5 restarts
+# so one generation fills a batch of 100 (the shared batch shape for every method).
+name: confirm
+policies:
+  - name: go1-demo
+    robot: go1
+    checkpoint: breakpoint_mjx/assets/demo/go1_policy.pkl
+    note: Playground Go1 joystick PPO, native gains Kp 35
+  - name: go1-demo-kp25
+    robot: go1
+    checkpoint: breakpoint_mjx/assets/demo/go1_policy.pkl
+    obs_spec: docs/byo/bundled_go1_kp25.yaml
+    independent_policy: false
+    note: SAME weights as go1-demo, actuator gains Kp 25 / Kd 0.5 (deployment variant, not an independent policy)
+methods: [uniform, sobol, lhs_boundary, directed, nov_r12]
+method_variants:
+  nov_r12: {kind: novelty, radius: 1.2, strength: 0.8, label: "Directed + novelty r1.2"}
+regimes: [near_nominal, conservative, broad]
+repetitions: 5
+horizon: 500
+search_plan: {budget: 1000, restarts: 5, popsize: 20}  # directed: 5 x 20 x 10 generations
+cluster_eps: 0.10
+cluster_eps_sensitivity: [0.05, 0.2, 0.3]
+validation: {n: 20, first_k: 3, leaders: 8}
+replay: {per_run: 2, seeds: 8}
