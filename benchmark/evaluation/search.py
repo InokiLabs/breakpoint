@@ -1,7 +1,9 @@
 """Run one search method for one (configuration, regime, repetition) at a fixed budget.
 
 uniform, lhs_boundary and directed are ``breakpoint_mjx.equal_budget.run_arm`` unchanged;
-sobol is the one new baseline. Every method evaluates through the same Recorder, the same
+directed is pinned to the original novelty-off search (the engine's default turned novelty
+on after this benchmark), so the published numbers reproduce. sobol is the one new
+baseline. Every method evaluates through the same Recorder, the same
 compiled evaluator (same batch shape) and spends exactly ``plan.budget`` rollouts.
 """
 from __future__ import annotations
@@ -37,7 +39,7 @@ def run_variant(v, recorder, space, cfg, plan, seed, objective):
     if kind in ("novelty", "restarts"):
         from breakpoint_mjx.multi_search import multi_cmaes_search
 
-        kw = {}
+        kw = {"novelty": False}      # the original search, as measured
         if kind == "novelty":
             kw = {"novelty": True, "novelty_radius": float(v.get("radius", 0.6)),
                   "novelty_strength": float(v.get("strength", 0.8))}
@@ -74,7 +76,8 @@ def run_method(method, recorder, space, cfg, plan, seed, objective, variant=None
         evals = len(X)
     elif method in ("uniform", "lhs_boundary", "directed"):
         X, _scores, evals = run_arm(method, recorder, space, cfg, ep, seed,
-                                    objective=objective)
+                                    objective=objective,
+                                    novelty=False if method == "directed" else None)
     elif method == "sobol":
         X = sobol_points(space, ep.budget, seed)
         _scores, evals = _eval_rows(recorder, X, ep.batch,

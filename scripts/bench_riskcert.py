@@ -130,7 +130,7 @@ def search_and_fit(space, semi, restarts, gens, seed):
     cfg = load_search_config(config_path("search.yaml"))
     cfg = replace(cfg, popsize=128, horizon=HORIZON, generations=gens, seed=seed)
     recs = multi_cmaes_search(legged_evaluate(semi), space, cfg, jax.random.PRNGKey(seed),
-                              restarts=restarts)
+                              restarts=restarts, novelty=False)  # as recorded
     th = np.array([r.theta_vector for r in recs])
     # centers: best record per restart, deduplicated
     by_restart = {}

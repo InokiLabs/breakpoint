@@ -160,3 +160,14 @@ def test_search_actually_climbs_the_synthetic_objective(space, cfg):
     assert per_gen_mean[-1] > per_gen_mean[0], (
         f"population did not concentrate: {per_gen_mean}"
     )
+
+
+def test_novelty_is_on_by_default_at_the_benchmarked_radius():
+    """Default chosen by the pre-registered benchmark (TECHNICAL_REPORT.md section 9.1)."""
+    import inspect
+
+    from breakpoint_mjx.multi_search import multi_cmaes_search
+
+    p = inspect.signature(multi_cmaes_search).parameters
+    assert p["novelty"].default is True
+    assert p["novelty_radius"].default == 1.2 and p["novelty_strength"].default == 0.8
