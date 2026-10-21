@@ -133,10 +133,18 @@ def test_escalation_clears_noise(ckpts):
     assert report["gate"]["warnings"] == []
 
 
-def test_smoke_does_not_escalate_by_default(ckpts):
+def test_smoke_escalates_by_default_so_one_broken_cell_can_fail_the_build(ckpts):
+    """4 smoke seeds can never make one cell significant on stage 1 (best p = 1/16 before
+    Holm, and the pooled test sees only those 4 pairs), so without escalation a candidate
+    that falls on every seed of one cell would pass. The default re-runs it on 16."""
     b, c = ckpts
-    report, _, _ = run(b, c, {"cand.pkl": {"push-light": 2}}, budget="smoke")
-    assert report["gate"]["escalation"]["seeds"] == []
+    table = {"cand.pkl": {"push-light": 8}}
+    report, _, _ = run(b, c, table, budget="smoke")
+    assert len(report["gate"]["escalation"]["seeds"]) == 16
+    assert report["gate"]["regressed"] is True
+    off, _, _ = run(b, c, table, budget="smoke", escalate_to=0)
+    assert off["gate"]["escalation"]["seeds"] == []
+    assert off["gate"]["regressed"] is False
 
 
 def test_rule_decision_keeps_the_original_behaviour(ckpts):
@@ -508,3 +516,65 @@ def test_escalated_cell_is_attributed_on_fresh_seed_evidence(ckpts):
     assert report["gate"]["regressed"] is True
     assert row(comp, "nominal")["status"] == "cleared on more seeds"
     assert "nominal" not in report["gate"]["new_failing_cells"]
+
+
+# ---------------------------------------------------------------- tracking degradation
+
+def mock_eval_tracking(falls, tracking):
+    """falls/tracking: {spec_basename: fn(cell_id, seed)} -> per-seed dicts, the shape the
+    simulator evaluator returns."""
+    def fn(spec, cells, seeds, horizon):
+        name = str(spec).replace("\\", "/").rsplit("/", 1)[-1]
+        return {c["id"]: {"outcomes": [int(falls[name](c["id"], s)) for s in seeds],
+                          "tracking_error": [float(tracking[name](c["id"], s)) for s in seeds]}
+                for c in cells}
+    return fn
+
+
+def _never(cid, s):
+    return 0
+
+
+def test_tracking_degradation_is_advisory_by_default(ckpts):
+    b, c = ckpts
+    ev = mock_eval_tracking({"base.pkl": _never, "cand.pkl": _never},
+                            {"base.pkl": lambda cid, s: 0.20,
+                             "cand.pkl": lambda cid, s: 0.30})
+    report, comp, md = G.run_gate(robot="go1", baseline=str(b), candidate=str(c),
+                                  evaluate_fn=ev, backend="mjx-cpu")
+    deg = report["gate"]["degradation"]
+    assert deg["significant"] is True and deg["fails_build"] is False
+    assert deg["n_pairs"] == len(CELL_IDS) * len(BATTERY.seeds)
+    assert report["gate"]["regressed"] is False
+    assert "tracking (advisory)" in md
+    assert not any("tracking_error" in cell for cell in report["cells"])
+    assert ratings.validate_report(report) == []
+
+
+def test_fail_on_degradation_fails_the_build_and_splits_alpha(ckpts, tmp_path):
+    b, c = ckpts
+    ev = mock_eval_tracking({"base.pkl": _never, "cand.pkl": _never},
+                            {"base.pkl": lambda cid, s: 0.20,
+                             "cand.pkl": lambda cid, s: 0.30})
+    report, comp, md = G.run_gate(robot="go1", baseline=str(b), candidate=str(c),
+                                  evaluate_fn=ev, backend="mjx-cpu", fail_on_degradation=True)
+    assert report["gate"]["regressed"] is True
+    assert report["gate"]["new_failing_cells"] == []
+    assert report["gate"]["degradation"]["alpha"] == pytest.approx(0.025)
+    assert comp["alpha"] == pytest.approx(0.025)             # the fall tests get the other half
+    assert "tracks its command significantly worse" in md
+
+
+def test_fallen_seeds_are_left_out_of_the_tracking_test(ckpts):
+    b, c = ckpts
+    # the candidate falls on every seed of one cell: those pairs measure the fall, not
+    # the gait, so they must not enter the tracking test
+    ev = mock_eval_tracking({"base.pkl": _never,
+                             "cand.pkl": lambda cid, s: int(cid == "push-light")},
+                            {"base.pkl": lambda cid, s: 0.20,
+                             "cand.pkl": lambda cid, s: 5.0 if cid == "push-light" else 0.20})
+    report, _, _ = G.run_gate(robot="go1", baseline=str(b), candidate=str(c),
+                              evaluate_fn=ev, backend="mjx-cpu", escalate_to=0)
+    deg = report["gate"]["degradation"]
+    assert deg["n_pairs"] == (len(CELL_IDS) - 1) * len(BATTERY.seeds)
+    assert deg["up"] == 0 and deg["significant"] is False
