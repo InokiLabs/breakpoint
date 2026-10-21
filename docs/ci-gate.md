@@ -129,6 +129,52 @@ rate` does (`legged-quadruped-v1` for go1 and barkour, `legged-humanoid-v1` for 
 refuses a battery written for another robot class. The report's `battery.sha256` is the
 hash of that file (line endings normalized), so a silent edit is visible.
 
+### Boundary battery (more sensitive)
+
+Most cells of the shipped battery are conditions a good policy survives, so a small
+regression shows up there as a few new falls the gate cannot tell from noise. A
+**boundary battery** holds conditions where *your baseline* falls on some seeds but not
+all of them. The policy is at its edge there, so a slightly worse candidate falls
+measurably more often.
+
+```
+breakpoint gate-boundary --robot go1 --baseline checkpoints/prod.pkl --out boundary.yaml
+breakpoint gate --robot go1 --baseline checkpoints/prod.pkl \
+    --candidate checkpoints/candidate.pkl --battery boundary.yaml
+```
+
+`gate-boundary` samples `--conditions` (default 128) conditions, half in the near-nominal
+box (each plausible band shrunk toward nominal to 25% of its width) and half in the
+plausible band. It runs the **baseline only** on 20 selection seeds and keeps the
+conditions with a fall rate in [`--p-min`, `--p-max`] (default [0.10, 0.60]), up to
+`--max-cells` (default 24). The written battery runs `--seeds` (default 8) fresh seeds
+per cell. These seeds are disjoint from the selection seeds and the escalation seeds, so
+the false-alarm bound above is unchanged. The cost is one baseline run of
+conditions × selection seeds (2,560 rollouts by default), paid once per baseline.
+
+The battery is tied to that baseline. Its `built_from.baseline_sha256` is checked, and
+the gate's summary carries a note when you gate against a different baseline. Rebuild it
+when you promote a new baseline. Run it at `--budget standard`, because the smoke
+budget's horizon cap changes what these conditions mean. Exit codes: 0 written, 1 no
+condition fell in the range (sample more or widen the range), 2 usage error.
+
+Measured in the benchmark (`benchmark/reports/TECHNICAL_REPORT.md` §9.3): go1 demo
+policy, 24 boundary cells × 8 paired seeds, synthetic weight-noise candidates:
+
+| candidate | shipped battery (gate) | boundary battery |
+|---|---|---|
+| identical | pass | pass, 80 → 80 falls |
+| σ 0.1 | pass, 15 → 17 | **regression, 80 → 97 (p = 0.006)** |
+| σ 0.3 | regression, 15 → 42 | regression, 80 → 159 |
+| σ 0.5 | regression, 15 → 103 | regression, 80 → 174 |
+
+These candidates are synthetic, and the identical pair is a single false-alarm check. The
+benchmark chose its cells from search results, while `gate-boundary` samples uniformly;
+the selection rule is the same.
+
+Running both batteries in one CI job spends `--alpha` on each, so the build's false-alarm
+bound is the sum of the two (pass `--alpha 0.025` to each to keep 5% overall).
+
 ### Budgets
 
 | budget | seeds | horizon | escalation default | where it fits |

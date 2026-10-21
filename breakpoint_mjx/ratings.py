@@ -81,6 +81,8 @@ class Battery:
     up_proj_min: float
     pass_num: int
     pass_den: int
+    # set on a boundary battery (breakpoint_mjx/boundary.py): the baseline it was built from
+    baseline_sha256: str | None = None
 
 
 # --------------------------------------------------------------------------
@@ -162,12 +164,17 @@ def load_battery(name_or_path) -> Battery:
         raise BatteryError(f"{path}: no cells")
     fh, up = parse_fall_rule(str(raw["fall_rule"]))
     num, den = parse_pass_rule(str(raw["pass_rule"]))
+    built = raw.get("built_from") or {}
+    if not isinstance(built, dict):
+        raise BatteryError(f"{path}: built_from must be a mapping")
     return Battery(
         id=str(raw["battery"]), version=int(raw["version"]),
         robot_class=str(raw["robot_class"]), horizon=horizon, seeds=tuple(seeds),
         fall_rule=str(raw["fall_rule"]), pass_rule=str(raw["pass_rule"]),
         cells=tuple(cells), sha256=hash_battery_bytes(data),
-        fall_height_m=fh, up_proj_min=up, pass_num=num, pass_den=den)
+        fall_height_m=fh, up_proj_min=up, pass_num=num, pass_den=den,
+        baseline_sha256=(str(built["baseline_sha256"]) if built.get("baseline_sha256")
+                         else None))
 
 
 def check_robot(battery: Battery, robot: str) -> None:

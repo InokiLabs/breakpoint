@@ -687,6 +687,14 @@ def cmd_gate(args):
     return gate(args)
 
 
+def cmd_gate_boundary(args):
+    """`breakpoint gate-boundary`: write a battery of conditions the baseline fails on some
+    seeds, for `breakpoint gate --battery` (breakpoint_mjx/boundary.py)."""
+    from breakpoint_mjx.boundary import build
+
+    return build(args)
+
+
 def cmd_baseline(args):
     """`breakpoint baseline`: directed search vs uniform (vs declared training DR) at an
     equal rollout budget, scored on transfer-free metrics (breakpoint_mjx/equal_budget.py)."""
@@ -919,6 +927,13 @@ def build_parser():
                                     "conditions the baseline survived")
     _gate_args(g)
     g.set_defaults(func=cmd_gate)
+
+    from breakpoint_mjx.boundary import add_args as _boundary_args
+
+    gb = sub.add_parser("gate-boundary", help="build a boundary battery for `gate` from the "
+                                              "baseline: conditions it fails sometimes")
+    _boundary_args(gb)
+    gb.set_defaults(func=cmd_gate_boundary)
 
     h = sub.add_parser("harden", help="retrain against found failures (commercial)")
     h.add_argument("--robot", required=True)

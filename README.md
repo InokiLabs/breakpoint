@@ -135,7 +135,11 @@ many cells there are; cells that got worse without enough evidence are re-run al
 fresh seeds (`--escalate-to`, 32 by default for `standard`). With 8 seeds and 15 cells the
 original "newly failing cell" rule raised a false alarm on about half of all builds where
 nothing changed; it is still available as `--decision rule`. Measured false-alarm and
-detection rates: `docs/ci-gate.md`. For GitHub Actions, copy
+detection rates: `docs/ci-gate.md`. For more sensitivity, `breakpoint gate-boundary
+--baseline checkpoints/prod.pkl --out boundary.yaml` builds a battery of conditions where
+your baseline falls on some seeds but not all of them; pass it to the gate with `--battery
+boundary.yaml`. In the benchmark this battery caught a small regression that the shipped
+battery passed. For GitHub Actions, copy
 `examples/github-workflow.yml` into your policy repo.
 
 **Sign and verify** a report (needs `.[attest]`):
