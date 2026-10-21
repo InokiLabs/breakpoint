@@ -301,8 +301,9 @@ def nominal_check(evaluate, space, cfg, plan, *, objective=None, seed=0):
 
 
 def run_arm(arm, evaluate, space, cfg, plan, seed, *, objective=None, train_dist=None,
-            log=print):
-    """One arm, one seed -> (thetas (B, D), scores (B,), evals). Exactly B rollouts."""
+            novelty=None, log=print):
+    """One arm, one seed -> (thetas (B, D), scores (B,), evals). Exactly B rollouts.
+    ``novelty`` (directed arm only) overrides multi_cmaes_search's default when set."""
     import dataclasses
 
     import jax
@@ -315,7 +316,8 @@ def run_arm(arm, evaluate, space, cfg, plan, seed, *, objective=None, train_dist
                                    generations=plan.generations)
         recs = multi_cmaes_search(evaluate, space, dcfg, jax.random.PRNGKey(int(seed)),
                                   restarts=plan.restarts, seed_theta=None,
-                                  objective=objective)
+                                  objective=objective,
+                                  **({} if novelty is None else {"novelty": bool(novelty)}))
         X = np.asarray([r.theta_vector for r in recs], dtype=float)
         sc = np.asarray([r.failure_score for r in recs], dtype=float)
         evals = len(recs)

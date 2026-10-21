@@ -1,0 +1,16 @@
+# Pilot: full horizon and the full-run search plan, one repetition, half budget.
+name: pilot
+policies:
+  - name: go1-demo
+    robot: go1
+    checkpoint: breakpoint_mjx/assets/demo/go1_policy.pkl
+    note: Playground Go1 joystick PPO, native gains Kp 35
+regimes: [near_nominal, conservative, broad]
+methods: [uniform, sobol, lhs_boundary, directed]
+repetitions: 1
+horizon: 500                                            # the engine's standard 10 s horizon
+search_plan: {budget: 500, restarts: 5, popsize: 20}   # directed: 5 x 20 x 5 generations
+cluster_eps: 0.10
+cluster_eps_sensitivity: [0.05, 0.2, 0.3]
+validation: {n: 20, first_k: 3, leaders: 8}
+replay: {per_run: 1, seeds: 8}

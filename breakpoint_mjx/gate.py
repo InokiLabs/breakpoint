@@ -543,6 +543,13 @@ def run_gate(*, robot, baseline, candidate, battery=None, budget="standard",
     base_sha = ratings.sha256_file(ratings.policy_file(baseline))
     if cand_sha == base_sha:
         notes.append("baseline and candidate are the same file (identical sha256)")
+    if bat.baseline_sha256 and bat.baseline_sha256 != base_sha:
+        notes.append(f"battery {bat.id} was built from a different baseline (sha256 "
+                     f"{bat.baseline_sha256[:12]}); its cells may no longer sit at this "
+                     f"baseline's edge. Rebuild it with `breakpoint gate-boundary`")
+    if bat.baseline_sha256 and budget != "standard":
+        notes.append("a boundary battery's fall rates were measured at the full horizon; "
+                     "a capped-horizon budget weakens it")
     report = build_report(
         robot=robot, bat=bat,
         policy_name=candidate_name or ratings.policy_file(candidate).name,

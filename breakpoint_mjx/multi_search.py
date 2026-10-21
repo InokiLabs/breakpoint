@@ -127,8 +127,8 @@ class NoveltyArchive:
 
 
 def multi_cmaes_search(evaluate, space, cfg, key, restarts=16, seed_theta=None,
-                       objective=None, spread=1.0, novelty=False,
-                       novelty_radius=0.6, novelty_strength=0.8):
+                       objective=None, spread=1.0, novelty=True,
+                       novelty_radius=1.2, novelty_strength=0.8):
     """Multi-restart CMA-ES. Returns list[FailureRecord] across all restarts.
 
     One ``evaluate`` call per generation covering every restart, so the number of
@@ -150,11 +150,14 @@ def multi_cmaes_search(evaluate, space, cfg, key, restarts=16, seed_theta=None,
     to 16 small restarts, which also has the lowest variance across seeds. So the
     lever is the NUMBER of independent starts, not restarts-versus-popsize per se.
 
-    ``novelty`` defaults OFF because it did not pay off: at radii 0.5, 0.62 and 0.93
-    it found the same 4/6 modes as plain multi-start and slightly worsened mean
-    closest approach at 16 restarts (0.467 -> 0.495). It is kept as an option because
-    it is cheap and a different landscape may reward it, but it is not on by default
-    and it should not be turned on without re-measuring.
+    ``novelty`` defaults ON at radius 1.2 (strength 0.8), re-measured on the real go1
+    simulator in the pre-registered benchmark (benchmark/reports/TECHNICAL_REPORT.md
+    section 9.1): on held-out seeds it found 1.22-1.25x the coarse-distinct validated
+    failures of the novelty-off search in every configuration and regime, with no loss
+    in failure yield or fine-grained distinct failures. It still finds fewer
+    coarse-distinct failures than uniform sampling in the stress-test box. On the
+    synthetic 6-mode landscape, smaller radii (0.5, 0.62, 0.93) found the same 4/6 modes
+    as plain multi-start; pass ``novelty=False`` for the original search.
     """
     import jax
     import jax.numpy as jnp

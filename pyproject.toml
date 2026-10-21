@@ -33,6 +33,7 @@ onnx = ["onnx>=1.16"]
 attest = ["cryptography>=42"]   # ed25519 report signing (breakpoint keys/sign/verify)
 llm = ["anthropic>=0.69", "httpx>=0.27"]
 dev = ["pytest>=8"]
+bench = ["matplotlib>=3.8", "scipy>=1.11"]   # benchmark/ figures and statistics
 
 [project.scripts]
 breakpoint = "breakpoint_mjx.cli:main"
