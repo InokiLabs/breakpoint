@@ -432,6 +432,57 @@ def _evidence_videos_html(f, report, media_dir) -> str:
             f'{_e(src)}, clipped 1 s after the fall.</small></p>')
 
 
+def _training_row(f) -> str:
+    """Per-family 'Training coverage' row (training_gap.py). Empty when not classified."""
+    c = getattr(f, "training_coverage", None) or {}
+    v = c.get("verdict")
+    prov = (' <small>(provisional: no certified minimal cause, judged on the family\'s '
+            'top dims)</small>' if c.get("provisional") else "")
+    if v == "defect":
+        return ('<li><b>Training coverage:</b> <b>defect</b>: every cause dim is inside the '
+                'ranges the policy was trained on, so this is not a missing '
+                f'randomization term{prov}</li>')
+    if v == "coverage_gap":
+        parts = []
+        for r in c.get("outside", []):
+            lo, hi = r["trained"]
+            tr = f"{lo:g}" if lo == hi else f"[{lo:g}, {hi:g}]"
+            parts.append(f'<code>{_e(r["dim"])}</code>={r["value"]:g} (trained {tr}'
+                         + (", beyond the plausible band" if r["beyond_plausible"] else "")
+                         + ")")
+        return ('<li><b>Training coverage:</b> coverage gap: ' + "; ".join(parts)
+                + '. Expected for a policy never trained there; see the suggested '
+                  f'randomization patch{prov}</li>')
+    return ""
+
+
+def _training_html(training) -> str:
+    """Run-level 'Defects vs coverage gaps' section with the suggested patch."""
+    if not training:
+        return ""
+    from breakpoint_mjx.training_gap import patch_yaml
+
+    head = '<h2>Defects vs coverage gaps</h2>'
+    if training.get("source") is None:
+        return (head + '<p>Not classified: no training randomization was declared. Set '
+                '<code>BP_TRAIN_DR</code> to a YAML with a <code>training_dr:</code> block '
+                '(or use a contract written by <code>breakpoint init --from ...</code>) to '
+                'separate failures inside the trained ranges (defects) from failures on axes '
+                'the policy never saw (coverage gaps).</p>')
+    n = training.get("counts") or {}
+    body = (f'<p>Against the training randomization from {_e(training["source"])}: '
+            f'<b>{n.get("defect", 0)}</b> famil{"y" if n.get("defect", 0) == 1 else "ies"} '
+            f'fail inside the trained ranges (defects); <b>{n.get("coverage_gap", 0)}</b> '
+            f'fail only on axes or values training did not cover (coverage gaps).</p>')
+    y = patch_yaml(training.get("patch") or {})
+    if y:
+        body += ('<p>Suggested training randomization for the coverage gaps (each range '
+                 'covers the failing value plus 10% headroom, capped at the plausible '
+                 'band). Retrain, then re-run BreakPoint on the same battery to confirm '
+                 'the gap closed:</p><pre>' + _e(y) + '</pre>')
+    return head + body
+
+
 def _family_section(f, heading, report, media_dir, explanations, validity_configs,
                     stats, rank_by_id, nominal, ranked=True) -> str:
     relative = bool(stats.get("relative"))
@@ -475,6 +526,7 @@ def _family_section(f, heading, report, media_dir, explanations, validity_config
           {expl_html}
           <ul>
             {_cause_table_html(f, nominal)}
+            {_training_row(f)}
             {_floor_flag_html(f)}
             <li><b>Mean failure score:</b> {f.mean_failure_score:.3f}</li>
             <li><b>Mean transfer score:</b> {f.mean_transfer_score:.3f}</li>
@@ -528,7 +580,8 @@ def _fidelity_html(evidence) -> str:
 
 def render_html(report: BreakPointReport, explanations=None, media_dir=None,
                 validity_configs=None, stats=None, operational_risk=None,
-                envelope=None, evidence=None, nominal=None, famrisk=None) -> str:
+                envelope=None, evidence=None, nominal=None, famrisk=None,
+                training=None) -> str:
     """One self-contained HTML page.
 
     Families are split by ``schemas.family_status``: CONFIRMED families are ranked
@@ -538,6 +591,7 @@ def render_html(report: BreakPointReport, explanations=None, media_dir=None,
     the fidelity disclosure (search collision model, replay summary, surrogate fit);
     ``nominal`` ({dim: nominal value}) feeds the cause tables. ``famrisk`` is the
     per-family operational-risk summary (famrisk.run_stage), rendered as its own section.
+    ``training`` is the defects-vs-coverage-gaps summary (training_gap.annotate).
     """
     from breakpoint_mjx.schemas import family_status
 
@@ -617,6 +671,7 @@ table.cause{{border-collapse:collapse}}table.cause td,table.cause th{{padding:0 
 {_physical_validity_html(stats)}
 {_fidelity_html(evidence)}
 {_stats_summary_html(stats)}
+{_training_html(training)}
 {_operational_risk_html(operational_risk)}
 {_famrisk_html(fams, famrisk)}
 {_envelope_html(envelope)}
@@ -660,7 +715,7 @@ def _with_sibling_validity(report, path, stats):
 
 def write_report(report: BreakPointReport, path, explanations=None, embed=True,
                  validity_configs=None, stats=None, operational_risk=None, envelope=None,
-                 evidence=None, nominal=None, famrisk=None):
+                 evidence=None, nominal=None, famrisk=None, training=None):
     # embed=True -> base64-embed mp4s found beside `path` so the report is self-contained.
     # validity_configs: the per-config label vector (from crossval.validate_failures)
     # aligned with each family's reproduction vector, for the T1 per-config display.
@@ -674,7 +729,8 @@ def write_report(report: BreakPointReport, path, explanations=None, embed=True,
         fh.write(render_html(report, explanations, media_dir=media_dir,
                              validity_configs=validity_configs, stats=stats,
                              operational_risk=operational_risk, envelope=envelope,
-                             evidence=evidence, nominal=nominal, famrisk=famrisk))
+                             evidence=evidence, nominal=nominal, famrisk=famrisk,
+                             training=training))
     return path
 
 

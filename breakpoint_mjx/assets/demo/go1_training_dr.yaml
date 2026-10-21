@@ -1,0 +1,18 @@
+# Training randomization of the bundled demo policy (assets/demo/go1_policy.pkl), in
+# BreakPoint theta dims. It was trained with scripts/train.py, i.e. MuJoCo Playground's
+# Go1JoystickFlatTerrain PPO recipe with registry.get_domain_randomizer (go1/randomize.py):
+#   floor friction U(0.4, 1.0); torso mass +U(-1, 1) kg (and every body mass x U(0.9, 1.1),
+#   no BreakPoint dim); torso CoM +U(-0.05, 0.05) m per axis; joint friction loss
+#   x U(0.9, 1.1); joint armature x U(1.0, 1.05). Pushes (pert_config) are disabled, the
+#   env's own observation noise is on (BreakPoint's obs_noise_scale = 0 is that level).
+# Dims not listed were NOT randomized: the policy only ever saw their nominal value
+# (no action latency, no extra noise / bias / dropout, no pushes, flat floor, nominal PD).
+# Use with: BP_TRAIN_DR=breakpoint_mjx/assets/demo/go1_training_dr.yaml
+training_dr:
+  friction_floor: {range: [0.4, 1.0]}
+  torso_mass_add_kg: {range: [-1.0, 1.0]}
+  com_offset_x_m: {range: [-0.05, 0.05]}
+  com_offset_y_m: {range: [-0.05, 0.05]}
+  com_offset_z_m: {range: [-0.05, 0.05]}
+  joint_frictionloss_scale: {range: [0.9, 1.1]}
+  joint_armature_scale: {range: [1.0, 1.05]}

@@ -744,6 +744,17 @@ def main(argv=None):
         famrisk_summary["residual"] = _res
     families_payload["family_operational_risk"] = famrisk_summary
 
+    # Defects vs coverage gaps (training_gap.py): classify every family against the
+    # declared training randomization and write the suggested randomization patch.
+    from breakpoint_mjx import training_gap
+    training_summary = training_gap.annotate(families, space)
+    families_payload["training_coverage"] = training_summary
+    if training_summary["patch"]:
+        patch_path = os.path.join(OUT, "training_dr_patch.yaml")
+        with open(patch_path, "w", encoding="utf-8") as fh:
+            fh.write(training_gap.patch_yaml(training_summary["patch"]))
+        print("coverage gaps:", training_summary["counts"], "-> wrote", patch_path)
+
     evidence = {
         "search_collision_model": SEARCH_COLLISION_MODELS.get(target.env_name),
         "replay": replay_summary,
@@ -766,6 +777,7 @@ def main(argv=None):
             fd["replay"] = f.replay
             fd["evidence_videos"] = f.evidence_videos
             fd["mjx_min_floor_height"] = f.mjx_min_floor_height
+            fd["training_coverage"] = f.training_coverage
         families_payload["videos"] = {"state": video_state, "rendered": sorted(mp4s)}
         ex = dict(expl)
         if note:
@@ -777,7 +789,8 @@ def main(argv=None):
                      embed=embed, validity_configs=validity_configs, stats=stats,
                      operational_risk=operational_risk,
                      envelope=families_payload.get("envelope"), evidence=evidence,
-                     nominal=nominal_named, famrisk=famrisk_summary)
+                     nominal=nominal_named, famrisk=famrisk_summary,
+                     training=training_summary)
         stagecache.replace_atomic(tmp, report_path)
         stagecache.write_json_atomic(families_path, families_payload)
 

@@ -461,6 +461,8 @@ def cmd_run(args):
         env["BP_RISK_N"] = str(args.risk)
         if getattr(args, "risk_dist", None):
             env["BP_RISK_DIST"] = str(Path(args.risk_dist).resolve())
+    if getattr(args, "train_dr", None):
+        env["BP_TRAIN_DR"] = str(Path(args.train_dr).resolve())   # training_gap.py
 
     # A URDF run derives its target from the model itself; a registered name uses the
     # Playground env. Either way the run dir is namespaced by the same label.
@@ -601,7 +603,7 @@ def cmd_demo(args):
         robot="go1", policy=None, out=str(out), search="cmaes", autolytic=0, risk=0,
         risk_dist=None, contribute=False, no_contribute=True, budget=args.budget,
         skip_check=True, obs_spec=None, low_mem=getattr(args, "low_mem", False),
-        _demo=True)
+        train_dr=str(demo_asset().with_name("go1_training_dr.yaml")), _demo=True)
     rc = cmd_run(run_args)
     if rc == 0:
         report = dst.parent / "report.html"
@@ -826,6 +828,12 @@ def build_parser():
     r.add_argument("--risk-dist", dest="risk_dist", default=None, metavar="YAML",
                    help="YAML with an `operational:` block overriding the per-dim "
                         "deployment ranges ({dim: {range: [lo, hi]}} or {mean, sd})")
+    r.add_argument("--train-dr", dest="train_dr", default=None, metavar="YAML",
+                   help="YAML with a `training_dr:` block, {dim: {range: [lo, hi]}}: the "
+                        "randomization the policy was TRAINED with. Families are then "
+                        "split into defects (inside it) and coverage gaps (outside it), "
+                        "with a suggested randomization patch. A contract from "
+                        "`breakpoint init --from ...` already carries it")
     r.add_argument("--budget", default=None, choices=("smoke", "standard", "full"),
                    help="search size: smoke (minutes on a CPU laptop, a preview), standard "
                         "(a real search on a small GPU), full (search.yaml, the default). "

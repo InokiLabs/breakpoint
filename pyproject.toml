@@ -48,7 +48,7 @@ include = ["breakpoint_mjx*"]
 # `breakpoint demo --view` opens.
 [tool.setuptools.package-data]
 breakpoint_mjx = ["configs/*.yaml", "configs/**/*.yaml", "batteries/*.yaml",
-                  "assets/demo/*.pkl",
+                  "assets/demo/*.pkl", "assets/demo/*.yaml",
                   "assets/demo/sample_report/*.html", "assets/demo/sample_report/*.json"]
 
 [tool.pytest.ini_options]
