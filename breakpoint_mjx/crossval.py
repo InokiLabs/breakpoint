@@ -192,10 +192,43 @@ def apply_physics_config(base_model, config: PhysicsConfig):
     model = base_model.tree_replace(updates) if updates else base_model
 
     if config.solref_scale != 1.0:
-        model = model.tree_replace(
-            {"geom_solref": model.geom_solref.at[:, 0].multiply(config.solref_scale)}
-        )
+        upd = {"geom_solref": model.geom_solref.at[:, 0].multiply(config.solref_scale)}
+        # explicit <pair> contacts carry their own solref, which overrides the geoms' (G1's
+        # feet touch the floor only through pairs), so soften/stiffen those too
+        ps = getattr(model, "pair_solref", None)
+        if ps is not None and getattr(ps, "shape", (0,))[0]:
+            upd["pair_solref"] = ps.at[:, 0].multiply(config.solref_scale)
+        model = model.tree_replace(upd)
     return model
+
+
+def env_for_physics_config(env, config: PhysicsConfig):
+    """The env to replay ``config`` with: ``env`` itself, or for a timestep change a
+    shallow copy whose physics substeps per control step scale inversely.
+
+    A Playground env steps ``n_substeps = round(ctrl_dt / sim_dt)`` physics steps per
+    action, computed from its own ``_sim_dt``, not from the model. Scaling only
+    ``opt.timestep`` therefore also scaled the CONTROL period: "fine_timestep" ran the
+    policy at twice its rate for half the simulated time, which tests a different
+    controller, not finer integration. The copy keeps ctrl_dt fixed. RAISES ValueError
+    when the scaled timestep does not divide ctrl_dt into a whole number of substeps, so a
+    config that cannot be replayed faithfully is skipped loudly instead of run wrong.
+    """
+    if config.timestep_scale == 1.0:
+        return env
+    import copy
+
+    if not hasattr(env, "_sim_dt") or not hasattr(env, "dt"):
+        raise ValueError(f"{type(env).__name__} exposes no _sim_dt; cannot rescale its "
+                         f"physics timestep without changing its control period")
+    sim_dt = float(env._sim_dt) * float(config.timestep_scale)
+    n = float(env.dt) / sim_dt
+    if abs(n - round(n)) > 1e-6 or round(n) < 1:
+        raise ValueError(f"{config.name}: ctrl_dt {env.dt:g} / sim_dt {sim_dt:g} = {n:g} is "
+                         f"not a whole number of substeps")
+    out = copy.copy(env)
+    out._sim_dt = sim_dt
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -357,15 +390,20 @@ def validate_failures(
     failure_score = objective.failure_score
 
     selected = select_top(records, top_n)
-    mjx = MjxBackend(
-        env=env,
-        policy_fn=policy_fn,
-        target=target,
-        space=space,
-        consts=consts,
-        base_model=base_model,
-        horizon=horizon,
-    )
+    # One MJX backend per config: a timestep config needs its own env (substeps scaled so
+    # the control period stays fixed, env_for_physics_config). A config that cannot be
+    # replayed faithfully is dropped from the vector, and says so.
+    runnable, mjx = [], {}
+    for c in configs:
+        try:
+            cenv = env_for_physics_config(env, c)
+        except ValueError as e:
+            print(f"validity: skipping physics config {c.name}: {e}", flush=True)
+            continue
+        runnable.append(c)
+        mjx[c.name] = MjxBackend(env=cenv, policy_fn=policy_fn, target=target, space=space,
+                                 consts=consts, base_model=base_model, horizon=horizon)
+    configs = runnable
 
     config_names = [c.name for c in configs]
     backend_names = [b.name for b in (extra_backends or [])]
@@ -376,7 +414,7 @@ def validate_failures(
             model = apply_physics_config(base_model, c)
             # Each backend reconstructs the failure's OWN recorded key (physics varies,
             # seed fixed); it raises on a legacy record rather than fabricating one.
-            summary = mjx.simulate(rec, model=model)
+            summary = mjx[c.name].simulate(rec, model=model)
             scores.append(failure_score(component_signals(summary, thresholds), horizon))
         for backend in extra_backends or []:
             summary = backend.simulate(rec)

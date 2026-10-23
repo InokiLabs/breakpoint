@@ -455,3 +455,60 @@ def test_floor_slope_zero_is_identity_noop():
     src = _source_arrays()
     apply_legged_theta_numpy(numpy_model, {**_scalars(), "floor_slope_rad": 0.0}, (0, 1))
     np.testing.assert_allclose(numpy_model.geom_quat, src["geom_quat"], atol=1e-12)
+
+
+# --------------------------------------------------------------------------- #
+# Timestep configs keep the control period fixed; contact softness reaches pairs
+# --------------------------------------------------------------------------- #
+class _TimedEnv:
+    def __init__(self, ctrl_dt=0.02, sim_dt=0.004):
+        self._ctrl_dt, self._sim_dt = ctrl_dt, sim_dt
+
+    @property
+    def dt(self):
+        return self._ctrl_dt
+
+    @property
+    def n_substeps(self):
+        return int(round(self.dt / self._sim_dt))
+
+
+def test_timestep_config_scales_substeps_not_the_control_period():
+    from breakpoint_mjx.crossval import PhysicsConfig, env_for_physics_config
+
+    env = _TimedEnv()
+    fine = env_for_physics_config(env, PhysicsConfig("fine", timestep_scale=0.5))
+    assert fine is not env and fine.dt == env.dt          # same control period
+    assert fine.n_substeps == 2 * env.n_substeps          # twice the physics steps
+    assert env.n_substeps == 5                            # the original is untouched
+    assert env_for_physics_config(env, PhysicsConfig("soft", solref_scale=2.0)) is env
+
+
+def test_timestep_config_that_cannot_divide_the_control_period_is_refused():
+    from breakpoint_mjx.crossval import PhysicsConfig, env_for_physics_config
+
+    with pytest.raises(ValueError, match="whole number of substeps"):
+        env_for_physics_config(_TimedEnv(), PhysicsConfig("coarse", timestep_scale=2.0))
+
+
+def test_contact_softness_also_scales_explicit_pair_solref():
+    """G1's floor contacts are explicit pairs with their own solref; scaling geom_solref
+    alone left soft/stiff contacts a no-op there."""
+    pytest.importorskip("jax")
+    from breakpoint_mjx.crossval import PhysicsConfig, apply_physics_config
+
+    class _M:
+        def __init__(self, geom_solref, pair_solref):
+            self.geom_solref, self.pair_solref = geom_solref, pair_solref
+
+        def tree_replace(self, upd):
+            d = {"geom_solref": self.geom_solref, "pair_solref": self.pair_solref, **upd}
+            return _M(d["geom_solref"], d["pair_solref"])
+
+    import jax.numpy as jnp
+
+    m = _M(jnp.full((3, 2), 0.02), jnp.full((2, 2), 0.02))
+    out = apply_physics_config(m, PhysicsConfig("soft", solref_scale=2.0))
+    assert jnp.allclose(out.geom_solref[:, 0], 0.04)
+    assert jnp.allclose(out.pair_solref[:, 0], 0.04)
+    assert jnp.allclose(out.pair_solref[:, 1], 0.02)      # damping ratio untouched
