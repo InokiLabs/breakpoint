@@ -53,6 +53,7 @@ def test_go1_model_fields_are_the_eight():
         "dof_frictionloss",
         "dof_armature",
         "geom_quat",   # T6 floor-slope (GEOMETRY axis)
+        "pair_friction",   # explicit floor contact pairs (G1) carry their own friction
     )
 
 
@@ -133,6 +134,11 @@ class _FakeModel:
         # geom_quat: identity (w,x,y,z)=(1,0,0,0) per geom; the floor-slope dim pitches
         # the floor row. Identity base keeps the intended-rotation math clean to check.
         self.geom_quat = _FakeArr(np.tile(np.array([1.0, 0.0, 0.0, 0.0]), (ngeom, 1)))
+        # explicit contact pairs: (floor 0, geom 1) and (geom 1, geom 2); only the first
+        # touches the floor, so only it may take friction_floor
+        self.pair_geom1 = np.array([0, 1])
+        self.pair_geom2 = np.array([1, 2])
+        self.pair_friction = _FakeArr(np.full((2, 5), 0.6))
         # jnt_type: joint 0 is the free base (mjJNT_FREE == 0) by default, then nu
         # hinge joints (mjJNT_HINGE == 3). Tests flip jnt0 to simulate a model whose
         # joint 0 is NOT the free base (count can still match, but [6:] would mis-slice).
@@ -167,6 +173,13 @@ def test_build_fields_applies_go1_math_at_the_right_indices():
     floor_geom_id, torso_body_id = 0, 1
     s = _scalars()
     out = g.build_fields(s, base, (floor_geom_id, torso_body_id))
+
+    # explicit contact pairs that include the floor take friction_floor on both tangential
+    # coefficients (they override geom friction); other pairs and coefficients untouched
+    pf = out["pair_friction"].arr
+    assert pf[0, :2] == pytest.approx([s["friction_floor"]] * 2)
+    assert pf[0, 2:] == pytest.approx(base.pair_friction.arr[0, 2:])
+    assert pf[1] == pytest.approx(base.pair_friction.arr[1])
 
     # geom_friction[floor, 0] is SET to friction_floor; other entries untouched.
     assert out["geom_friction"].arr[floor_geom_id, 0] == pytest.approx(s["friction_floor"])

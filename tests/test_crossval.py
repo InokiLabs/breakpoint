@@ -353,7 +353,18 @@ def _source_arrays(nbody=4, ngeom=3, nu=12, ndof=18):
         dof_armature=rng.uniform(0.01, 0.1, size=(ndof,)),
         # geom_quat: identity per geom; the floor-slope dim pitches the floor row.
         geom_quat=np.tile(np.array([1.0, 0.0, 0.0, 0.0]), (ngeom, 1)),
+        # explicit contact pairs (G1-style): pair 0 touches the floor (geom 0), pair 1 not
+        pair_geom1=np.array([0, 1]),
+        pair_geom2=np.array([1, 2]),
+        pair_friction=np.full((2, 5), 0.6),
     )
+
+
+def _fake_model(src):
+    """``_FakeArr`` fields for build_legged_fields; pair geom ids stay plain int arrays
+    (they are static numpy arrays on a real MJX model too)."""
+    return types.SimpleNamespace(**{k: (v if k.startswith("pair_geom") else _FakeArr(v))
+                                    for k, v in src.items()})
 
 
 def _scalars():
@@ -374,7 +385,7 @@ def test_cbackend_numpy_field_application_matches_build_legged_fields():
     s = _scalars()
 
     # MJX path: build_legged_fields on a _FakeArr model -> dict of new _FakeArr.
-    fake = types.SimpleNamespace(**{k: _FakeArr(v) for k, v in src.items()})
+    fake = _fake_model(src)
     expected = build_legged_fields(s, fake, consts)
 
     # C-MuJoCo path: apply_legged_theta_numpy mutating a plain-numpy model in place.
@@ -407,6 +418,10 @@ def test_cbackend_numpy_field_application_only_touches_expected_entries():
     np.testing.assert_allclose(numpy_model.body_mass[2:], src["body_mass"][2:])
     # geom_quat: only the floor row (index 0) is tilted; other geoms stay identity.
     np.testing.assert_allclose(numpy_model.geom_quat[1:], src["geom_quat"][1:])
+    # pair_friction: only the floor pair's two tangential coefficients changed.
+    np.testing.assert_allclose(numpy_model.pair_friction[0, :2], [s["friction_floor"]] * 2)
+    np.testing.assert_allclose(numpy_model.pair_friction[0, 2:], src["pair_friction"][0, 2:])
+    np.testing.assert_allclose(numpy_model.pair_friction[1], src["pair_friction"][1])
 
 
 def test_floor_slope_produces_intended_pitch_quaternion():

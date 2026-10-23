@@ -41,7 +41,25 @@ LEGGED_MODEL_FIELDS = (
     "dof_frictionloss",
     "dof_armature",
     "geom_quat",
+    # Explicit <contact><pair> entries carry their OWN friction, which overrides the geoms'
+    # (MuJoCo semantics). G1's feet touch the floor only through such pairs, so setting
+    # geom_friction alone left the friction axis a silent no-op there (measured: identical
+    # trajectories at floor friction 0.05 and 1.0). Pairs that include the floor get the
+    # same coefficient; a model without pairs (go1, t1, ...) has a (0, 5) array, a no-op.
+    "pair_friction",
 )
+
+
+def floor_pair_ids(base_model, floor_geom_id):
+    """Indices of explicit contact pairs that include the floor geom (numpy, static)."""
+    import numpy as np
+
+    g1 = getattr(base_model, "pair_geom1", None)
+    g2 = getattr(base_model, "pair_geom2", None)
+    if g1 is None or g2 is None:
+        return np.zeros(0, dtype=int)
+    g1, g2 = np.asarray(g1), np.asarray(g2)
+    return np.nonzero((g1 == floor_geom_id) | (g2 == floor_geom_id))[0]
 
 
 def phase_humanoid_non_sensor(env):
@@ -193,6 +211,12 @@ def build_legged_fields(scalars, base_model, consts):
     floor_slope_rad = scalars.get("floor_slope_rad", 0.0)
 
     geom_friction = base_model.geom_friction.at[floor_geom_id, 0].set(friction_floor)
+    pair_friction = getattr(base_model, "pair_friction", None)
+    pair_ids = floor_pair_ids(base_model, floor_geom_id)
+    if pair_friction is not None and len(pair_ids):
+        # both tangential coefficients; spin/roll friction keep the model's values
+        pair_friction = pair_friction.at[pair_ids, 0].set(friction_floor)
+        pair_friction = pair_friction.at[pair_ids, 1].set(friction_floor)
     body_mass = base_model.body_mass.at[torso_body_id].add(torso_mass_add_kg)
     body_ipos = base_model.body_ipos.at[torso_body_id, 0].add(com_offset_x_m)
     body_ipos = body_ipos.at[torso_body_id, 1].add(com_offset_y_m)
@@ -224,4 +248,5 @@ def build_legged_fields(scalars, base_model, consts):
         "dof_frictionloss": dof_frictionloss,
         "dof_armature": dof_armature,
         "geom_quat": geom_quat,
+        "pair_friction": pair_friction,
     }

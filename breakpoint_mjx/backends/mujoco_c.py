@@ -74,6 +74,7 @@ def apply_legged_theta_numpy(model, scalars, consts):
     math is byte-identical to `targets._legged.build_legged_fields`:
 
       geom_friction[floor, 0]  = friction_floor            (SET)
+      pair_friction[floor pairs, :2] = friction_floor      (SET; explicit pairs, e.g. G1)
       body_mass[torso]        += torso_mass_add_kg         (ADD)
       body_ipos[torso, {0,1,2}]+= com_offset_{x,y,z}_m     (ADD, per axis)
       actuator_gainprm[:, 0]  *= kp_scale                  (Kp)
@@ -96,6 +97,12 @@ def apply_legged_theta_numpy(model, scalars, consts):
     floor_geom_id, torso_body_id = consts
 
     model.geom_friction[floor_geom_id, 0] = scalars["friction_floor"]
+    from breakpoint_mjx.targets._legged import floor_pair_ids
+
+    ids = floor_pair_ids(model, floor_geom_id)
+    if len(ids):
+        model.pair_friction[ids, 0] = scalars["friction_floor"]
+        model.pair_friction[ids, 1] = scalars["friction_floor"]
     model.body_mass[torso_body_id] += scalars["torso_mass_add_kg"]
     model.body_ipos[torso_body_id, 0] += scalars["com_offset_x_m"]
     model.body_ipos[torso_body_id, 1] += scalars["com_offset_y_m"]
