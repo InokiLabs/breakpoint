@@ -30,6 +30,11 @@ importing this module does not require a GPU/JAX install.
 """
 from __future__ import annotations
 
+import dataclasses
+
+import numpy as np
+
+from breakpoint_mjx.objectives.legged import LEGGED_OBJECTIVE, legged_summarize_in_frame
 from breakpoint_mjx.targets import Target, resolve_constants_by_name
 from breakpoint_mjx.targets._legged import (
     LEGGED_MODEL_FIELDS,
@@ -47,6 +52,16 @@ TORSO_BODY_NAME = "torso"
 
 # Shared single-source-of-truth legged fields (identical 7 to Go1).
 MODEL_FIELDS = LEGGED_MODEL_FIELDS
+
+# The joystick command and the env's own tracking reward use the "imu_frame" site, which
+# Menagerie mounts on the torso yawed 180 deg (site quat [0, 0, 0, 1]): torso body x
+# points BACKWARDS. Velocities are read in the IMU frame; resolve_constants checks the
+# site still has this orientation so a Menagerie change fails loudly.
+IMU_SITE_NAME = "imu_frame"
+IMU_SITE_QUAT = (0.0, 0.0, 0.0, 1.0)
+R_IMU_IN_TORSO = np.diag([-1.0, -1.0, 1.0])
+OBJECTIVE = dataclasses.replace(LEGGED_OBJECTIVE,
+                                summarize=legged_summarize_in_frame(R_IMU_IN_TORSO))
 
 
 def load_env():
@@ -79,7 +94,23 @@ def resolve_constants(env):
     perturbations.
     """
     validate_legged_model(env.mjx_model)
+    validate_imu_frame(env.mj_model)
     return resolve_constants_by_name(env, FLOOR_GEOM_NAME, TORSO_BODY_NAME)
+
+
+def validate_imu_frame(mj_model):
+    """Raise if the IMU site is missing, not on the torso, or not yawed 180 deg."""
+    import mujoco
+
+    sid = mujoco.mj_name2id(mj_model, mujoco.mjtObj.mjOBJ_SITE, IMU_SITE_NAME)
+    if sid < 0:
+        raise ValueError(f"Barkour model has no site {IMU_SITE_NAME!r}")
+    body = mujoco.mj_id2name(mj_model, mujoco.mjtObj.mjOBJ_BODY, int(mj_model.site_bodyid[sid]))
+    q = np.asarray(mj_model.site_quat[sid], dtype=float)
+    if body != TORSO_BODY_NAME or not np.allclose(np.abs(q), np.abs(IMU_SITE_QUAT), atol=1e-6):
+        raise ValueError(f"Barkour {IMU_SITE_NAME!r} site is on {body!r} with quat {q}; "
+                         f"expected {TORSO_BODY_NAME!r} with {IMU_SITE_QUAT}. Update "
+                         "R_IMU_IN_TORSO (tracking_error depends on it).")
 
 
 # Barkour's per-row field math IS the shared legged field math -- same affine
@@ -96,4 +127,5 @@ BARKOUR = Target(
     load_env=load_env,
     resolve_constants=resolve_constants,
     build_fields=build_fields,
+    objective=OBJECTIVE,
 )

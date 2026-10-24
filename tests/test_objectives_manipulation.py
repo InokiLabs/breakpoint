@@ -445,8 +445,15 @@ def test_scores_from_trajectories_legged_default_is_byte_identical():
 def test_go1_barkour_g1_all_route_through_the_legged_objective():
     for name in ("go1", "barkour", "g1"):
         t = get_target(name)
-        assert t.objective is LEGGED_OBJECTIVE
         assert t.domain == "locomotion"
+        if name == "barkour":
+            # Same legged scoring; only the summary differs (velocities in Barkour's
+            # 180-deg-yawed IMU frame, see test_barkour_heading_frame.py).
+            for hook in ("component_signals", "failure_score", "behavior_descriptor",
+                         "rollout_signature", "nominal_performance"):
+                assert getattr(t.objective, hook) is getattr(LEGGED_OBJECTIVE, hook)
+        else:
+            assert t.objective is LEGGED_OBJECTIVE
 
 
 def test_legged_summarize_matches_the_former_inline_summary():
