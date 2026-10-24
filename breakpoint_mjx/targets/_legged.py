@@ -250,3 +250,27 @@ def build_legged_fields(scalars, base_model, consts):
         "geom_quat": geom_quat,
         "pair_friction": pair_friction,
     }
+
+
+def eval_config_overrides(env_name, impl):
+    """``config_overrides`` for loading a Playground locomotion env for EVALUATION.
+
+    Playground's joystick envs perturb the base on their own during training: G1, T1 and
+    Berkeley Humanoid push it (``push_config``, up to 2 m/s every 5-10 s), Barkour kicks it
+    (``velocity_kick`` up to 1 m/s), Go1's ``pert_config`` is off. Left on, every "nominal"
+    rollout carries random shoves that no theta dim controls, so a calm-conditions walk
+    check fails good policies (G1: fall rate 0.06-0.12 with pushes, 0.0 without) and search
+    / jury / certificate results mix in disturbances they cannot attribute. BreakPoint's own
+    push is a theta dim; the env's are switched off here.
+    """
+    from mujoco_playground import registry
+
+    cfg = registry.get_default_config(env_name)
+    out = {"impl": impl}
+    for group in ("push_config", "pert_config"):
+        if group in cfg and "enable" in cfg[group]:
+            out[f"{group}.enable"] = False
+    if "velocity_kick" in cfg:
+        out["velocity_kick"] = [0.0, 0.0]
+    return out
+

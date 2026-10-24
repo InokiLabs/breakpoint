@@ -20,6 +20,7 @@ from breakpoint_mjx.targets import Target
 from breakpoint_mjx.targets._legged import (
     LEGGED_MODEL_FIELDS,
     build_legged_fields,
+    eval_config_overrides,
     validate_legged_model,
 )
 
@@ -48,7 +49,7 @@ def load_env():
     from breakpoint_mjx.adapters.obs_spec import GO1_INTERFACE
     from breakpoint_mjx.obs_adversary import set_obs_non_sensor
 
-    env = registry.load(ENV_NAME, config_overrides={"impl": IMPL})
+    env = registry.load(ENV_NAME, config_overrides=eval_config_overrides(ENV_NAME, IMPL))
     maybe_apply_from_env(env, "go1")
     # last_act + command are inputs the robot computes, not sensor readings.
     lay = GO1_INTERFACE.layout

@@ -25,6 +25,7 @@ from breakpoint_mjx.targets import Target
 from breakpoint_mjx.targets._legged import (
     LEGGED_MODEL_FIELDS,
     build_legged_fields,
+    eval_config_overrides,
     validate_legged_model,
 )
 
@@ -101,7 +102,7 @@ def make_legged_target(name, env_name, *, floor_candidates=DEFAULT_FLOOR_CANDIDA
 
         from breakpoint_mjx.obs_adversary import set_obs_non_sensor
 
-        env = registry.load(env_name, config_overrides={"impl": impl})
+        env = registry.load(env_name, config_overrides=eval_config_overrides(env_name, impl))
         if obs_non_sensor is not None:
             slices, frame = obs_non_sensor(env)
             set_obs_non_sensor(env, slices, frame=frame)
