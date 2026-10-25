@@ -9,3 +9,7 @@ out/
 media/_jaxcache/
 .pytest_cache/
 .breakpoint-oss-export
+
+# benchmark run outputs (large; regenerate with benchmark/run_benchmark.py)
+benchmark/results/
+.DS_Store

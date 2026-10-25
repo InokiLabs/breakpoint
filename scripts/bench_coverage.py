@@ -187,7 +187,7 @@ def run_one(space, cfg, family, K, seed):
         wcfg = replace(rcfg, seed=int(seed) + 100003 * w)
         with contextlib.redirect_stdout(io.StringIO()):
             recs = multi_cmaes_search(L.evaluate, space, wcfg, jax.random.PRNGKey(0),
-                                      restarts=WAVE)
+                                      restarts=WAVE, novelty=False)  # as recorded
         for i, r in enumerate(recs):
             r.id = f"cmaes-w{w}-r{cov.restart_unit(r.id)[1]}-{len(records) + i}"
         records += recs

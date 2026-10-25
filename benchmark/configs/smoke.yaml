@@ -1,0 +1,24 @@
+# Plumbing check only: tiny budget, short horizon, one repetition. Not a result.
+name: smoke
+policies:
+  - name: go1-demo
+    robot: go1
+    checkpoint: breakpoint_mjx/assets/demo/go1_policy.pkl
+    note: Playground Go1 joystick PPO, native gains Kp 35
+regimes: [near_nominal, conservative, broad]
+methods: [uniform, sobol, lhs_boundary, directed]
+repetitions: 1
+horizon: 150
+search_plan: {budget: 200, restarts: 5, popsize: 20}   # directed: 5 x 20 x 2 generations
+cluster_eps: 0.10
+cluster_eps_sensitivity: [0.05, 0.2, 0.3]
+validation: {n: 20, first_k: 1, leaders: 2}
+replay: {per_run: 1, seeds: 8}
+regression:
+  policy: go1-demo
+  budget: smoke
+  alpha: 0.05
+  escalate_to: 0
+  pairs:
+    - {name: smoke-null-identical, kind: identical}
+  adversarial: {regime: conservative, max_conditions: 4, seeds: 4}
