@@ -439,3 +439,52 @@ def test_stateful_policy_runs_on_the_c_engine(fx):
     for k in CONTRACT_KEYS:
         np.testing.assert_allclose(np.asarray(a[k]), np.asarray(b[k]), rtol=1e-5,
                                    atol=1e-5, err_msg=k)
+
+
+# --------------------------------------------------------------------------- #
+# Extended axes + the world-model hook: the C loop must apply them like MJX does
+# --------------------------------------------------------------------------- #
+@pytest.fixture(scope="module")
+def extended(fx):
+    """Every extended axis on, plus world_model_scale with a small smooth correction
+    attached to the env, replayed on both engines."""
+    import jax.numpy as jnp
+
+    from breakpoint_mjx.config import ThetaDim, ThetaSpace
+
+    ext = load_theta_space(config_path("configs/go1/theta_space_extended.yaml"))
+    dims = dict(ext.dims)
+    dims["world_model_scale"] = ThetaDim("world_model_scale", "rollout", (0.0, 1.5), 1.0,
+                                         (0.5, 1.25))
+    space = ThetaSpace(dims)
+    fx.env._bp_action_correction = lambda obs, a: 0.1 * jnp.tanh(a) - 0.05
+    over = {"motor_strength_scale": 0.8, "fault_motor_frac": 0.3, "fault_strength": 0.6,
+            "joint_damping_scale": 1.5, "floor_solref_timeconst": 0.03,
+            "floor_solref_dampratio": 0.8, "action_noise_scale": 0.02,
+            "wind_force_n": 10.0, "world_model_scale": 1.0}
+    theta = {n: space.dims[n].nominal for n in space.names()}
+    theta.update(over)
+    rec = FailureRecord(
+        id="parity-ext", theta_vector=[theta[n] for n in space.names()],
+        theta_named=dict(theta), failure_score=0.9, component_signals={},
+        rollout_signature=[], seed=0, batch_key=list(BATCH_KEY), env_index=ENV_INDEX,
+    )
+    mjx = MjxBackend(fx.env, fx.policy_fn, fx.target, space, fx.consts, fx.base_model,
+                     HORIZON)
+    c = MujocoCBackend(fx.env, fx.policy_fn, fx.target, space, fx.consts, HORIZON)
+    jax.clear_caches()
+    try:
+        return mjx.simulate(rec), c.simulate(rec)
+    finally:
+        del fx.env._bp_action_correction
+
+
+def test_extended_and_world_model_axes_reach_both_engines(nominal, extended):
+    _, _, c_nominal = nominal
+    m, c = extended
+    np.testing.assert_allclose(np.asarray(c["trunk_height"])[:EARLY],
+                               np.asarray(m["trunk_height"])[:EARLY], rtol=0.05)
+    np.testing.assert_allclose(np.asarray(c["up_proj"])[:EARLY],
+                               np.asarray(m["up_proj"])[:EARLY], atol=0.05)
+    assert not np.allclose(np.asarray(c["trunk_height"]),
+                           np.asarray(c_nominal["trunk_height"]))

@@ -50,6 +50,16 @@ def _obs_with_state(obs, new_state):
     return {**obs, "state": new_state} if isinstance(obs, dict) else new_state
 
 
+def action_correction(env):
+    """The env's learned action correction ``f(obs_state, action) -> delta`` (pure jax),
+    required once a space declares world_model_scale."""
+    fn = getattr(env, "_bp_action_correction", None)
+    if fn is None:
+        raise ValueError("world_model_scale is declared but the env has no "
+                         "_bp_action_correction (load a fitted world model first)")
+    return fn
+
+
 def wind_vector(xp, jax, key, wind_force_n):
     """The episode's constant base force [N]: horizontal, direction from key child 3."""
     ang = jax.random.uniform(jax.random.fold_in(key, 3), (), minval=0.0,
@@ -104,7 +114,14 @@ def rollout_one(
       * wind_force_n      -- constant horizontal force [N] on the base for the whole
                              episode (wind, a dragged cable, a leash); direction sampled
                              once at reset. Set on xfrc_applied before every step.
-    The last two are no-ops unless declared (python-level check), so a space without
+      * world_model_scale -- how much of a learned action correction to apply: the action
+                             the actuators get becomes a + scale * env._bp_action_correction(
+                             obs, a), where obs is the robot's own (unperturbed) reading and
+                             a the action after the latency buffer. A world model fitted to
+                             real-robot logs supplies the correction (it makes the simulator
+                             move like that robot); 0 is the raw simulator. The policy is
+                             untouched: the correction belongs to the environment.
+    The last three are no-ops unless declared (python-level check), so a space without
     them compiles to exactly the previous program.
 
     Step semantics (identical in both paths -- the divergence #6 fixes):
@@ -173,6 +190,9 @@ def rollout_one(
     has_wind = "wind_force_n" in rollout_scalars
     wind_vec = wind_vector(jnp, jax, key, rollout_scalars.get("wind_force_n", 0.0))
     base_body = model.jnt_bodyid[0]
+    has_wm = "world_model_scale" in rollout_scalars
+    wm_scale = rollout_scalars.get("world_model_scale", 0.0)
+    correction = action_correction(env) if has_wm else None
 
     sensor_mask = obs_sensor_mask(env, state_shape[-1])
     if sensor_mask is not None:
@@ -204,6 +224,8 @@ def rollout_one(
             act, _ = policy_fn(obs, nk_policy)
         buf = jnp.concatenate([act[None], buf[:-1]], axis=0)  # newest at index 0
         delayed = buf[lat]                                     # lat=0 => no delay
+        if has_wm:
+            delayed = delayed + wm_scale * correction(state, delayed)
         if has_act_noise:
             delayed = delayed + act_noise_scale * jax.random.normal(
                 jax.random.fold_in(nk_noise, 2), delayed.shape)

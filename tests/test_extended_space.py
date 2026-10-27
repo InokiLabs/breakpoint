@@ -82,3 +82,16 @@ def test_extended_files_ship_as_package_data():
     globs = pp["tool"]["setuptools"]["package-data"]["breakpoint_mjx"]
     assert "configs/**/*.yaml" in globs
     yaml.safe_load(config_path("configs/go1/theta_space_extended.yaml").read_text())
+
+
+def test_world_model_dim_without_a_fitted_model_is_an_error():
+    from breakpoint_mjx.rollout import action_correction
+
+    class Env:
+        pass
+
+    with pytest.raises(ValueError, match="world_model_scale"):
+        action_correction(Env())
+    e = Env()
+    e._bp_action_correction = lambda o, a: a
+    assert action_correction(e) is e._bp_action_correction

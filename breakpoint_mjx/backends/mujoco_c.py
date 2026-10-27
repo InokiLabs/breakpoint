@@ -544,6 +544,12 @@ class MujocoCBackend:
         wind_ang = float(self._uniform(self._fold_in(key, 3), (), 0.0, 2.0 * np.pi))
         wind_vec = wind * np.array([np.cos(wind_ang), np.sin(wind_ang), 0.0])
         base_body = int(model.jnt_bodyid[0])
+        has_wm = "world_model_scale" in rs
+        if has_wm:
+            from breakpoint_mjx.rollout import action_correction
+
+            correction = action_correction(self.env)
+            wm_scale = float(rs["world_model_scale"])
 
         buf = np.zeros((LMAX + 1, int(env.action_size)), dtype=np.float32)
         # Stateful policy (history / recurrent): same carry rule as rollout_one, built
@@ -574,6 +580,9 @@ class MujocoCBackend:
                 act, _ = pol(perturbed, nk_policy)
             buf = np.concatenate([np.asarray(act, dtype=np.float32)[None], buf[:-1]], axis=0)
             delayed = buf[latency_steps]                      # lat=0 => no delay
+            if has_wm:
+                delayed = delayed + wm_scale * np.asarray(
+                    correction(vec, delayed), np.float32)
             if has_act_noise:
                 delayed = delayed + act_noise_scale * np.asarray(
                     self._normal(self._fold_in(nk_noise, 2), delayed.shape), np.float32)
