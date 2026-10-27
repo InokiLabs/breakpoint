@@ -13,6 +13,7 @@ Both layouts resolve:
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 PACKAGE_DIR = Path(__file__).resolve().parent
@@ -42,6 +43,11 @@ def config_path(rel) -> Path:
       * an ABSOLUTE path                    (URDF-derived targets write their
                                              derived theta space next to the run,
                                              which has no home inside the package)
+
+    ``BP_THETA_SPACE=<variant>`` (e.g. ``extended``) swaps a shipped robot's
+    ``theta_space.yaml`` for its ``theta_space_<variant>.yaml``, so every stage of one
+    run (search, jury, checks) reads the same wider space. A robot without that file
+    is an error, never a silent fallback to the default space.
     """
     p = Path(rel)
     if p.is_absolute():
@@ -49,7 +55,14 @@ def config_path(rel) -> Path:
     parts = p.parts
     if parts and parts[0] == "configs":
         p = Path(*parts[1:])
-    return configs_dir() / p
+    out = configs_dir() / p
+    variant = os.environ.get("BP_THETA_SPACE", "").strip()
+    if variant and variant != "default" and out.name == "theta_space.yaml":
+        alt = out.with_name(f"theta_space_{variant}.yaml")
+        if not alt.exists():
+            raise FileNotFoundError(f"BP_THETA_SPACE={variant}: no {alt}")
+        return alt
+    return out
 
 
 def search_config_path() -> Path:

@@ -50,6 +50,13 @@ def _obs_with_state(obs, new_state):
     return {**obs, "state": new_state} if isinstance(obs, dict) else new_state
 
 
+def wind_vector(xp, jax, key, wind_force_n):
+    """The episode's constant base force [N]: horizontal, direction from key child 3."""
+    ang = jax.random.uniform(jax.random.fold_in(key, 3), (), minval=0.0,
+                             maxval=2.0 * xp.pi)
+    return wind_force_n * xp.array([xp.cos(ang), xp.sin(ang), 0.0])
+
+
 def rollout_one(
     env,
     policy_fn,
@@ -92,6 +99,13 @@ def rollout_one(
                              once at reset from a key child; models a miscalibrated sensor).
       * push_mag          -- magnitude (m/s) of a gait-timed velocity impulse on the base.
       * push_step_frac    -- WHEN the push lands, as a fraction of the horizon [0,1].
+      * action_noise_scale -- per-step Gaussian noise on the action the actuators get
+                             (after the latency buffer): motor driver / PWM noise.
+      * wind_force_n      -- constant horizontal force [N] on the base for the whole
+                             episode (wind, a dragged cable, a leash); direction sampled
+                             once at reset. Set on xfrc_applied before every step.
+    The last two are no-ops unless declared (python-level check), so a space without
+    them compiles to exactly the previous program.
 
     Step semantics (identical in both paths -- the divergence #6 fixes):
       key, nk_noise, nk_policy = split(key, 3)
@@ -154,6 +168,11 @@ def rollout_one(
     push_step = jnp.clip(
         jnp.round(push_step_frac * (horizon - 1)).astype(jnp.int32), 0, horizon - 1
     )
+    has_act_noise = "action_noise_scale" in rollout_scalars
+    act_noise_scale = rollout_scalars.get("action_noise_scale", 0.0)
+    has_wind = "wind_force_n" in rollout_scalars
+    wind_vec = wind_vector(jnp, jax, key, rollout_scalars.get("wind_force_n", 0.0))
+    base_body = model.jnt_bodyid[0]
 
     sensor_mask = obs_sensor_mask(env, state_shape[-1])
     if sensor_mask is not None:
@@ -185,6 +204,12 @@ def rollout_one(
             act, _ = policy_fn(obs, nk_policy)
         buf = jnp.concatenate([act[None], buf[:-1]], axis=0)  # newest at index 0
         delayed = buf[lat]                                     # lat=0 => no delay
+        if has_act_noise:
+            delayed = delayed + act_noise_scale * jax.random.normal(
+                jax.random.fold_in(nk_noise, 2), delayed.shape)
+        if has_wind:
+            st = st.replace(data=st.data.replace(
+                xfrc_applied=st.data.xfrc_applied.at[base_body, :3].set(wind_vec)))
         # Apply the gait-timed push to the base linear velocity at the chosen step, BEFORE
         # stepping, so the impulse is integrated this step. do_push is 0/1 (no branching).
         do_push = (step_idx == push_step).astype(st.data.qvel.dtype)

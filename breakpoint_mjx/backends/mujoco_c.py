@@ -121,7 +121,36 @@ def apply_legged_theta_numpy(model, scalars, consts):
     q_pitch = np.array([np.cos(half), 0.0, np.sin(half), 0.0])
     base_q = np.asarray(model.geom_quat[floor_geom_id], dtype=float)
     model.geom_quat[floor_geom_id] = _quat_mul_np(q_pitch, base_q)
+    _apply_extended_numpy(model, scalars, floor_geom_id, ids)
     return model
+
+
+def _apply_extended_numpy(model, scalars, floor_geom_id, pair_ids):
+    """NUMPY mirror of targets._legged._extended_fields (each axis only if declared)."""
+    from breakpoint_mjx.targets._legged import actuator_strength, fault_gain
+
+    nu = model.actuator_gainprm.shape[0]
+    if any(k in scalars for k in ("motor_strength_scale", "fault_motor_frac",
+                                  "fault_strength")):
+        s = np.asarray(actuator_strength(np, scalars, nu), dtype=float)
+        model.actuator_forcerange[:] = model.actuator_forcerange * s[:, None]
+        jr = getattr(model, "jnt_actfrcrange", None)
+        if jr is not None and len(jr):
+            jid = np.asarray(model.actuator_trnid)[:, 0]
+            jr[jid] = jr[jid] * s[:, None]
+        g = fault_gain(np, scalars, nu)
+        if g is not None:
+            model.actuator_gainprm[:, 0] *= g
+            model.actuator_biasprm[:, 1] *= g
+            model.actuator_biasprm[:, 2] *= g
+    if "joint_damping_scale" in scalars:
+        model.dof_damping[6:] *= scalars["joint_damping_scale"]
+    for col, name in ((0, "floor_solref_timeconst"), (1, "floor_solref_dampratio")):
+        if name not in scalars:
+            continue
+        model.geom_solref[floor_geom_id, col] = scalars[name]
+        if len(pair_ids):
+            model.pair_solref[pair_ids, col] = scalars[name]
 
 
 def _model_scalars(space, theta_named):
@@ -509,6 +538,12 @@ class MujocoCBackend:
         push_angle = float(self._uniform(self._fold_in(key, 2), (), 0.0, 2.0 * np.pi))
         push_vec = push_mag * np.array([np.cos(push_angle), np.sin(push_angle), 0.0])
         push_step = int(np.clip(round(push_step_frac * (horizon - 1)), 0, horizon - 1))
+        has_act_noise = "action_noise_scale" in rs
+        act_noise_scale = float(rs.get("action_noise_scale", 0.0))
+        wind = float(rs.get("wind_force_n", 0.0))
+        wind_ang = float(self._uniform(self._fold_in(key, 3), (), 0.0, 2.0 * np.pi))
+        wind_vec = wind * np.array([np.cos(wind_ang), np.sin(wind_ang), 0.0])
+        base_body = int(model.jnt_bodyid[0])
 
         buf = np.zeros((LMAX + 1, int(env.action_size)), dtype=np.float32)
         # Stateful policy (history / recurrent): same carry rule as rollout_one, built
@@ -539,6 +574,12 @@ class MujocoCBackend:
                 act, _ = pol(perturbed, nk_policy)
             buf = np.concatenate([np.asarray(act, dtype=np.float32)[None], buf[:-1]], axis=0)
             delayed = buf[latency_steps]                      # lat=0 => no delay
+            if has_act_noise:
+                delayed = delayed + act_noise_scale * np.asarray(
+                    self._normal(self._fold_in(nk_noise, 2), delayed.shape), np.float32)
+            if "wind_force_n" in rs:
+                xf = state.data.xfrc_applied.at[base_body, :3].set(wind_vec)
+                state = state.replace(data=state.data.replace(xfrc_applied=xf))
             # Gait-timed push on the base linear velocity, applied to the float64 C state
             # BEFORE stepping so the impulse is integrated this step (rollout_one order).
             if push_mag != 0.0 and t == push_step:

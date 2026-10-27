@@ -47,7 +47,25 @@ LEGGED_MODEL_FIELDS = (
     # trajectories at floor friction 0.05 and 1.0). Pairs that include the floor get the
     # same coefficient; a model without pairs (go1, t1, ...) has a (0, 5) array, a no-op.
     "pair_friction",
+    # Extended physics axes (optional dims; each is a no-op unless its dim is declared,
+    # so a 16-dim space builds exactly the fields it did before):
+    #   motor_strength_scale       actuator torque limits (battery sag, derating)
+    #   fault_motor_frac/_strength   one weak motor: its Kp, Kd and torque limit scaled
+    #   joint_damping_scale        dof_damping on the actuated joints
+    #   floor_solref_timeconst     ground softness (grass, mats, mud); also on floor pairs
+    #   floor_solref_dampratio     ground bounce
+    # Torque limits live in actuator_forcerange on the quadrupeds and in jnt_actfrcrange
+    # on the humanoids (G1, T1); both are scaled, whichever the model uses.
+    "actuator_forcerange",
+    "jnt_actfrcrange",
+    "dof_damping",
+    "geom_solref",
+    "pair_solref",
 )
+
+EXTENDED_MODEL_DIMS = ("motor_strength_scale", "fault_motor_frac", "fault_strength",
+                       "joint_damping_scale", "floor_solref_timeconst",
+                       "floor_solref_dampratio")
 
 
 def floor_pair_ids(base_model, floor_geom_id):
@@ -239,7 +257,7 @@ def build_legged_fields(scalars, base_model, consts):
     q_pitch = _pitch_quat_about_y(xp, floor_slope_rad)
     new_floor_quat = _quat_mul(xp, q_pitch, base_model.geom_quat[floor_geom_id])
     geom_quat = base_model.geom_quat.at[floor_geom_id].set(new_floor_quat)
-    return {
+    out = {
         "geom_friction": geom_friction,
         "body_mass": body_mass,
         "body_ipos": body_ipos,
@@ -250,6 +268,67 @@ def build_legged_fields(scalars, base_model, consts):
         "geom_quat": geom_quat,
         "pair_friction": pair_friction,
     }
+    out.update(_extended_fields(xp, scalars, base_model, floor_geom_id, pair_ids, out))
+    return out
+
+
+def fault_index(xp, scalars, nu):
+    """The weak motor: fault_motor_frac in [0, 1] picks actuator round(frac * (nu - 1)),
+    so one space works for 12 motors (Go1) and 29 (G1). Actuator order is the model's."""
+    return xp.round(xp.asarray(scalars.get("fault_motor_frac", 0.0)) * (nu - 1))
+
+
+def actuator_strength(xp, scalars, nu):
+    """Per-actuator torque multiplier, (nu,): motor_strength_scale everywhere, times
+    fault_strength on actuator round(fault_actuator). Ones when neither dim is declared."""
+    s = xp.ones(nu) * scalars.get("motor_strength_scale", 1.0)
+    if "fault_motor_frac" in scalars or "fault_strength" in scalars:
+        idx = fault_index(xp, scalars, nu)
+        hit = xp.arange(nu) == idx
+        s = s * xp.where(hit, scalars.get("fault_strength", 1.0), 1.0)
+    return s
+
+
+def fault_gain(xp, scalars, nu):
+    """Per-actuator Kp/Kd multiplier of the weak motor alone (ones without the dims)."""
+    if "fault_motor_frac" not in scalars and "fault_strength" not in scalars:
+        return None
+    idx = fault_index(xp, scalars, nu)
+    return xp.where(xp.arange(nu) == idx, scalars.get("fault_strength", 1.0), 1.0)
+
+
+def _extended_fields(xp, scalars, base_model, floor_geom_id, pair_ids, base):
+    """The extended-axis fields. A field whose dims are absent is passed through
+    unchanged (the same array as base_model's), so older spaces are byte-identical."""
+    import numpy as np
+
+    out = {f: getattr(base_model, f, None) for f in
+           ("actuator_forcerange", "jnt_actfrcrange", "dof_damping", "geom_solref",
+            "pair_solref")}
+    if any(k in scalars for k in ("motor_strength_scale", "fault_motor_frac",
+                                  "fault_strength")):
+        nu = int(np.shape(base_model.actuator_trnid)[0])
+        s = actuator_strength(xp, scalars, nu)
+        out["actuator_forcerange"] = base_model.actuator_forcerange.at[:, :].multiply(s[:, None])
+        jr = getattr(base_model, "jnt_actfrcrange", None)
+        if jr is not None and jr.shape[0]:
+            jid = np.asarray(base_model.actuator_trnid)[:, 0]
+            out["jnt_actfrcrange"] = jr.at[jid].multiply(s[:, None])
+        g = fault_gain(xp, scalars, nu)
+        if g is not None:
+            base["actuator_gainprm"] = base["actuator_gainprm"].at[:, 0].multiply(g)
+            bias = base["actuator_biasprm"].at[:, 1].multiply(g)
+            base["actuator_biasprm"] = bias.at[:, 2].multiply(g)
+    if "joint_damping_scale" in scalars:
+        out["dof_damping"] = base_model.dof_damping.at[6:].multiply(
+            scalars["joint_damping_scale"])
+    for col, name in ((0, "floor_solref_timeconst"), (1, "floor_solref_dampratio")):
+        if name not in scalars:
+            continue
+        out["geom_solref"] = out["geom_solref"].at[floor_geom_id, col].set(scalars[name])
+        if out["pair_solref"] is not None and len(pair_ids):
+            out["pair_solref"] = out["pair_solref"].at[pair_ids, col].set(scalars[name])
+    return out
 
 
 def eval_config_overrides(env_name, impl):

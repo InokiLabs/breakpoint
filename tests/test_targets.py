@@ -54,6 +54,12 @@ def test_go1_model_fields_are_the_eight():
         "dof_armature",
         "geom_quat",   # T6 floor-slope (GEOMETRY axis)
         "pair_friction",   # explicit floor contact pairs (G1) carry their own friction
+        # extended axes (opt-in dims; passed through unchanged when undeclared)
+        "actuator_forcerange",
+        "jnt_actfrcrange",
+        "dof_damping",
+        "geom_solref",
+        "pair_solref",
     )
 
 
@@ -143,6 +149,12 @@ class _FakeModel:
         # hinge joints (mjJNT_HINGE == 3). Tests flip jnt0 to simulate a model whose
         # joint 0 is NOT the free base (count can still match, but [6:] would mis-slice).
         self.jnt_type = _FakeArr(np.concatenate([[jnt0], np.full(nu, 3)]))
+        self.actuator_forcerange = _FakeArr(np.tile([-20.0, 20.0], (nu, 1)))
+        self.actuator_trnid = np.stack([np.arange(1, nu + 1), np.zeros(nu, int)], 1)
+        self.jnt_actfrcrange = _FakeArr(np.tile([-40.0, 40.0], (nu + 1, 1)))
+        self.dof_damping = _FakeArr(rng.uniform(0.1, 1.0, size=(ndof,)))
+        self.geom_solref = _FakeArr(np.tile([0.02, 1.0], (ngeom, 1)))
+        self.pair_solref = _FakeArr(np.tile([0.02, 1.0], (2, 1)))
 
 
 def _scalars():

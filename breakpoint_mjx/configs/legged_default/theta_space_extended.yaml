@@ -1,0 +1,46 @@
+# Shared GENERIC legged theta space, used by factory-made targets (targets/generic.py:
+# spot / h1 / t1 / berkeley_humanoid). A copy of the proven go1 space: the dims are
+# scale factors / offsets that transfer across floating-base legged robots. If a robot's
+# scale is materially different (like the heavier G1 widened torso_mass_add_kg in
+# configs/g1/theta_space.yaml), give it its OWN file and point its target at it.
+dims:
+  friction_floor: {kind: model, bounds: [0.15, 1.20], nominal: 0.80, plausible: [0.40, 1.00]}
+  torso_mass_add_kg: {kind: model, bounds: [-1.0, 6.0], nominal: 0.0, plausible: [-1.0, 2.0]}
+  com_offset_x_m: {kind: model, bounds: [-0.08, 0.08], nominal: 0.0, plausible: [-0.05, 0.05]}
+  com_offset_y_m: {kind: model, bounds: [-0.08, 0.08], nominal: 0.0, plausible: [-0.05, 0.05]}
+  kp_scale: {kind: model, bounds: [0.50, 1.50], nominal: 1.0, plausible: [0.85, 1.15]}
+  kd_scale: {kind: model, bounds: [0.50, 1.50], nominal: 1.0, plausible: [0.85, 1.15]}
+  com_offset_z_m: {kind: model, bounds: [-0.05, 0.05], nominal: 0.0, plausible: [-0.03, 0.03]}
+  joint_frictionloss_scale: {kind: model, bounds: [0.5, 3.0], nominal: 1.0, plausible: [0.9, 1.3]}
+  joint_armature_scale: {kind: model, bounds: [0.8, 2.0], nominal: 1.0, plausible: [1.0, 1.1]}
+  obs_noise_scale: {kind: rollout, bounds: [0.0, 0.10], nominal: 0.0, plausible: [0.0, 0.04]}
+  latency_steps: {kind: rollout, bounds: [0.0, 4.0], nominal: 0.0, plausible: [0.0, 2.0]}
+  obs_dropout_prob: {kind: rollout, bounds: [0.0, 0.50], nominal: 0.0, plausible: [0.0, 0.20]}
+  obs_bias_scale: {kind: rollout, bounds: [0.0, 0.10], nominal: 0.0, plausible: [0.0, 0.04]}
+  push_mag: {kind: rollout, bounds: [0.0, 2.0], nominal: 0.0, plausible: [0.0, 1.0]}
+  push_step_frac: {kind: rollout, bounds: [0.0, 1.0], nominal: 0.0, plausible: [0.0, 1.0]}
+  floor_slope_rad: {kind: model, bounds: [-0.20, 0.20], nominal: 0.0, plausible: [-0.10, 0.10]}
+
+  # ---- EXTENDED axes (theta_space_extended.yaml only; BP_THETA_SPACE=extended) ----
+  # ACTUATION: torque limits on every motor (battery sag under load, thermal derating,
+  # a driver current limit set low) and one weak motor (a worn gearbox, a failing
+  # driver): its Kp, Kd and torque limit scaled by fault_strength. fault_motor_frac picks
+  # the motor (round(frac * (nu-1)), model actuator order); it only matters when
+  # fault_strength < 1, and any motor can be the weak one, so its plausible band is full.
+  motor_strength_scale: {kind: model, bounds: [0.40, 1.10], nominal: 1.0, plausible: [0.75, 1.05]}
+  fault_motor_frac: {kind: model, bounds: [0.0, 1.0], nominal: 0.0, plausible: [0.0, 1.0]}
+  fault_strength: {kind: model, bounds: [0.20, 1.0], nominal: 1.0, plausible: [0.60, 1.0]}
+  # DYNAMICS: viscous joint damping (cold grease, seals).
+  joint_damping_scale: {kind: model, bounds: [0.5, 3.0], nominal: 1.0, plausible: [0.8, 1.5]}
+  # GROUND: contact time constant (MuJoCo solref[0]; 0.02 s is MuJoCo's default rigid
+  # floor; larger is softer: mats, grass, mud) and its damping ratio (lower bounces).
+  # Lower bound 0.01 keeps it >= 2x the coarsest physics step here (0.004 s).
+  floor_solref_timeconst: {kind: model, bounds: [0.01, 0.10], nominal: 0.02, plausible: [0.015, 0.05]}
+  floor_solref_dampratio: {kind: model, bounds: [0.3, 2.0], nominal: 1.0, plausible: [0.7, 1.3]}
+  # ACTUATION NOISE: per-step Gaussian on the action after the latency buffer (driver /
+  # PWM / quantization noise), in the policy's action units.
+  action_noise_scale: {kind: rollout, bounds: [0.0, 0.30], nominal: 0.0, plausible: [0.0, 0.08]}
+  # EXTERNAL LOAD: constant horizontal force on the base all episode (wind, a dragged
+  # tether or cable, a leash), direction sampled per episode. Newtons, so scale it to
+  # the robot: Go1 ~12 kg, Barkour ~5 kg, G1 ~35 kg.
+  wind_force_n: {kind: rollout, bounds: [0.0, 80.0], nominal: 0.0, plausible: [0.0, 25.0]}

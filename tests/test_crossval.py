@@ -332,6 +332,10 @@ class _FakeArr:
         self.arr = np.asarray(arr, dtype=float)
 
     @property
+    def shape(self):
+        return self.arr.shape
+
+    @property
     def at(self):
         return _AtIndexer(self)
 
@@ -357,13 +361,23 @@ def _source_arrays(nbody=4, ngeom=3, nu=12, ndof=18):
         pair_geom1=np.array([0, 1]),
         pair_geom2=np.array([1, 2]),
         pair_friction=np.full((2, 5), 0.6),
+        # extended axes: torque limits (both conventions), damping, contact softness
+        actuator_forcerange=np.tile([-20.0, 20.0], (nu, 1)),
+        actuator_trnid=np.stack([np.arange(1, nu + 1), np.zeros(nu, int)], 1),
+        jnt_actfrcrange=np.tile([-40.0, 40.0], (nu + 1, 1)),
+        dof_damping=rng.uniform(0.1, 1.0, size=(ndof,)),
+        geom_solref=np.tile([0.02, 1.0], (ngeom, 1)),
+        pair_solref=np.tile([0.02, 1.0], (2, 1)),
     )
+
+
+_STATIC = ("pair_geom", "actuator_trnid")
 
 
 def _fake_model(src):
     """``_FakeArr`` fields for build_legged_fields; pair geom ids stay plain int arrays
     (they are static numpy arrays on a real MJX model too)."""
-    return types.SimpleNamespace(**{k: (v if k.startswith("pair_geom") else _FakeArr(v))
+    return types.SimpleNamespace(**{k: (v if k.startswith(_STATIC) else _FakeArr(v))
                                     for k, v in src.items()})
 
 
@@ -397,6 +411,23 @@ def test_cbackend_numpy_field_application_matches_build_legged_fields():
             getattr(numpy_model, f), expected[f].arr,
             err_msg=f"C-backend numpy field {f!r} diverged from build_legged_fields",
         )
+
+
+def test_cbackend_numpy_mirror_matches_on_the_extended_axes():
+    """Same equality with every extended model axis declared (weak motor included)."""
+    src = _source_arrays()
+    consts = (0, 1)
+    s = {**_scalars(), "motor_strength_scale": 0.7, "fault_motor_frac": 0.4,
+         "fault_strength": 0.3, "joint_damping_scale": 2.0,
+         "floor_solref_timeconst": 0.06, "floor_solref_dampratio": 0.5}
+    expected = build_legged_fields(s, _fake_model(src), consts)
+    numpy_model = types.SimpleNamespace(**{k: v.copy() for k, v in src.items()})
+    apply_legged_theta_numpy(numpy_model, s, consts)
+    for f in expected:
+        np.testing.assert_allclose(getattr(numpy_model, f), expected[f].arr,
+                                   err_msg=f"extended field {f!r} diverged")
+    assert not np.allclose(numpy_model.actuator_forcerange, src["actuator_forcerange"])
+    assert numpy_model.geom_solref[0, 0] == 0.06
 
 
 def test_cbackend_numpy_field_application_only_touches_expected_entries():

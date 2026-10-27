@@ -117,6 +117,17 @@ Isaac Lab, RSL-RL, legged_gym or unitree_rl_gym? `breakpoint init --from rsl_rl 
 writes a policy contract (observation order, scales, PD gains, training randomization).
 See `docs/byo-policy.md` and `docs/contract.md`.
 
+### Wider stress space
+
+Every legged robot ships a 16-axis space (`configs/<robot>/theta_space.yaml`: floor
+friction and slope, payload and centre of mass, PD gains, joint friction and armature,
+latency, sensor noise, bias and dropout, a timed push). `BP_THETA_SPACE=extended` swaps
+in `theta_space_extended.yaml` (24 axes) for every stage of a run. The 8 added axes are
+motor torque limits (battery sag, derating), one weak motor (which one is part of the
+search), joint damping, ground softness and bounce, actuator noise, and a steady force
+on the base (wind, a dragged cable). Undeclared axes are no-ops, so the default space
+gives the same results as before.
+
 ## Rate, gate, verify
 
 **Rate** a policy on a fixed battery (`breakpoint_mjx/batteries/*.yaml`):
