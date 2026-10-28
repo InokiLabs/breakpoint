@@ -121,7 +121,18 @@ def rollout_one(
                              real-robot logs supplies the correction (it makes the simulator
                              move like that robot); 0 is the raw simulator. The policy is
                              untouched: the correction belongs to the environment.
-    The last three are no-ops unless declared (python-level check), so a space without
+      * latency_jitter_steps -- extra per-step delay, uniform in 0..round(jitter) on top of
+                             latency_steps (a busy bus or OS scheduler), capped at LMAX.
+      * obs_delay_steps   -- the policy sees the sensor reading from this many steps ago
+                             (sensor / estimator latency, separate from actuation latency).
+      * action_bias_scale -- per-EPISODE constant offset on every motor target (joint zero
+                             calibration error), sampled once from key child 4.
+      * motor_dropout_prob -- per step and motor, the chance a command packet is lost: that
+                             motor keeps its previous target (CAN / EtherCAT drops).
+      * stuck_motor_step_frac / stuck_motor_frac -- from step round(frac * H) on, motor
+                             round(stuck_motor_frac * (A-1)) is stuck at its last target
+                             (seized joint or dead driver); frac 1 = never.
+    The extended axes are no-ops unless declared (python-level check), so a space without
     them compiles to exactly the previous program.
 
     Step semantics (identical in both paths -- the divergence #6 fixes):
@@ -193,6 +204,20 @@ def rollout_one(
     has_wm = "world_model_scale" in rollout_scalars
     wm_scale = rollout_scalars.get("world_model_scale", 0.0)
     correction = action_correction(env) if has_wm else None
+    has_jitter = "latency_jitter_steps" in rollout_scalars
+    jitter = jnp.round(rollout_scalars.get("latency_jitter_steps", 0.0))
+    has_odelay = "obs_delay_steps" in rollout_scalars
+    odelay = jnp.clip(jnp.round(rollout_scalars.get("obs_delay_steps", 0.0)).astype(jnp.int32),
+                      0, LMAX)
+    has_abias = "action_bias_scale" in rollout_scalars
+    act_bias = rollout_scalars.get("action_bias_scale", 0.0) * jax.random.normal(
+        jax.random.fold_in(key, 4), (A,))
+    has_mdrop = "motor_dropout_prob" in rollout_scalars
+    mdrop = rollout_scalars.get("motor_dropout_prob", 0.0)
+    has_stuck = "stuck_motor_step_frac" in rollout_scalars
+    stuck_step = jnp.round(rollout_scalars.get("stuck_motor_step_frac", 1.0) * horizon
+                           ).astype(jnp.int32)
+    stuck_idx = jnp.round(rollout_scalars.get("stuck_motor_frac", 0.0) * (A - 1))
 
     sensor_mask = obs_sensor_mask(env, state_shape[-1])
     if sensor_mask is not None:
@@ -205,9 +230,16 @@ def rollout_one(
                         clean0, sensor_mask)[0]
     stateful = callable(getattr(policy_fn, "init_carry", None))
     pcarry0 = (policy_fn.init_carry(_obs_with_state(st0.obs, held0)) if stateful else None)
+    # extra carry, only for the axes that need memory (empty otherwise: same program)
+    ext0 = {}
+    if has_odelay:
+        ext0["obuf"] = jnp.repeat(held0[None], LMAX + 1, axis=0)
+    if has_mdrop or has_stuck:
+        ext0["prev"] = jnp.zeros(A)
 
     def body(carry, step_idx):
-        st, buf, key, pcarry, held = carry
+        st, buf, key, pcarry, held, ext = carry
+        ext = dict(ext)
         key, nk_noise, nk_policy = jax.random.split(key, 3)
         # Observation adversaries all draw from the obs-noise key stream (nk_noise) so
         # they stay deterministic + vmappable. Gaussian noise uses nk_noise directly;
@@ -217,6 +249,9 @@ def rollout_one(
         dropped = (jax.random.uniform(jax.random.fold_in(nk_noise, 1), state.shape)
                    < obs_dropout_prob)
         reading, held = perturb_obs(jnp, state, gauss, obs_bias, dropped, held, sensor_mask)
+        if has_odelay:
+            ext["obuf"] = jnp.concatenate([reading[None], ext["obuf"][:-1]], axis=0)
+            reading = ext["obuf"][odelay]
         obs = _obs_with_state(st.obs, reading)
         if stateful:
             act, pcarry = policy_fn(obs, nk_policy, pcarry)
@@ -224,11 +259,26 @@ def rollout_one(
             act, _ = policy_fn(obs, nk_policy)
         buf = jnp.concatenate([act[None], buf[:-1]], axis=0)  # newest at index 0
         delayed = buf[lat]                                     # lat=0 => no delay
+        if has_jitter:
+            extra = jnp.floor(jax.random.uniform(jax.random.fold_in(nk_noise, 3))
+                              * (jitter + 1)).astype(jnp.int32)
+            delayed = buf[jnp.clip(lat + extra, 0, LMAX)]
         if has_wm:
             delayed = delayed + wm_scale * correction(state, delayed)
+        if has_abias:
+            delayed = delayed + act_bias
         if has_act_noise:
             delayed = delayed + act_noise_scale * jax.random.normal(
                 jax.random.fold_in(nk_noise, 2), delayed.shape)
+        if has_mdrop or has_stuck:
+            hold = jnp.zeros(A, bool)
+            if has_mdrop:
+                hold = hold | (jax.random.uniform(jax.random.fold_in(nk_noise, 4), (A,))
+                               < mdrop)
+            if has_stuck:
+                hold = hold | ((jnp.arange(A) == stuck_idx) & (step_idx >= stuck_step))
+            delayed = jnp.where(hold, ext["prev"], delayed)
+            ext["prev"] = delayed
         if has_wind:
             st = st.replace(data=st.data.replace(
                 xfrc_applied=st.data.xfrc_applied.at[base_body, :3].set(wind_vec)))
@@ -267,11 +317,11 @@ def rollout_one(
             # Trace-time bool like collect_states, so eval throughput is untouched.
             summary = {**summary, "obs_state": _obs_state(obs), "action": act}
         out = (summary, st) if collect_states else summary
-        return (st, buf, key, pcarry, held), out
+        return (st, buf, key, pcarry, held, ext), out
 
     # xs = arange(H) so `body` gets the step index (drives the gait-timed push); this is
     # also the scan length. With push_mag=0 the step index is unused, so nominal is a no-op.
-    _, scanned = jax.lax.scan(body, (st0, buf0, key, pcarry0, held0),
+    _, scanned = jax.lax.scan(body, (st0, buf0, key, pcarry0, held0, ext0),
                               jnp.arange(horizon))
 
     if collect_states:

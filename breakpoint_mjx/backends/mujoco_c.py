@@ -550,6 +550,21 @@ class MujocoCBackend:
 
             correction = action_correction(self.env)
             wm_scale = float(rs["world_model_scale"])
+        A = int(env.action_size)
+        # the extended control-path axes, byte-for-byte the rollout_one rules
+        has_jitter = "latency_jitter_steps" in rs
+        jitter = round(float(rs.get("latency_jitter_steps", 0.0)))
+        has_odelay = "obs_delay_steps" in rs
+        odelay = int(np.clip(round(float(rs.get("obs_delay_steps", 0.0))), 0, LMAX))
+        has_abias = "action_bias_scale" in rs
+        act_bias = (float(rs.get("action_bias_scale", 0.0))
+                    * np.asarray(self._normal(self._fold_in(key, 4), (A,)), np.float32))
+        has_mdrop = "motor_dropout_prob" in rs
+        mdrop = float(rs.get("motor_dropout_prob", 0.0))
+        has_stuck = "stuck_motor_step_frac" in rs
+        stuck_step = round(float(rs.get("stuck_motor_step_frac", 1.0)) * horizon)
+        stuck_idx = round(float(rs.get("stuck_motor_frac", 0.0)) * (A - 1))
+        prev = np.zeros(A, np.float32)
 
         buf = np.zeros((LMAX + 1, int(env.action_size)), dtype=np.float32)
         # Stateful policy (history / recurrent): same carry rule as rollout_one, built
@@ -562,6 +577,7 @@ class MujocoCBackend:
                            sensor_mask)[0]
         pcarry = (self.policy_fn.init_carry(_obs_with_state(state.obs, held))
                   if stateful else None)
+        obuf = np.repeat(np.asarray(held)[None], LMAX + 1, axis=0) if has_odelay else None
         calls = [0]
         steps = []
         states = [state] if collect_states else None
@@ -573,6 +589,9 @@ class MujocoCBackend:
                        < obs_dropout_prob)
             # Same sensor-only, sample-and-hold rule as rollout_one (one shared function).
             reading, held = perturb_obs(np, vec, gauss, obs_bias, dropped, held, sensor_mask)
+            if has_odelay:
+                obuf = np.concatenate([np.asarray(reading)[None], obuf[:-1]], axis=0)
+                reading = obuf[odelay]
             perturbed = _obs_with_state(state.obs, reading.astype(vec.dtype))
             if stateful:
                 act, pcarry = pol(perturbed, nk_policy, pcarry)
@@ -580,12 +599,26 @@ class MujocoCBackend:
                 act, _ = pol(perturbed, nk_policy)
             buf = np.concatenate([np.asarray(act, dtype=np.float32)[None], buf[:-1]], axis=0)
             delayed = buf[latency_steps]                      # lat=0 => no delay
+            if has_jitter:
+                u = float(self._uniform(self._fold_in(nk_noise, 3), ()))
+                delayed = buf[int(np.clip(latency_steps + int(np.floor(u * (jitter + 1))),
+                                          0, LMAX))]
             if has_wm:
                 delayed = delayed + wm_scale * np.asarray(
                     correction(vec, delayed), np.float32)
+            if has_abias:
+                delayed = delayed + act_bias
             if has_act_noise:
                 delayed = delayed + act_noise_scale * np.asarray(
                     self._normal(self._fold_in(nk_noise, 2), delayed.shape), np.float32)
+            if has_mdrop or has_stuck:
+                hold = np.zeros(A, bool)
+                if has_mdrop:
+                    hold |= self._uniform(self._fold_in(nk_noise, 4), (A,)) < mdrop
+                if has_stuck:
+                    hold |= (np.arange(A) == stuck_idx) & (t >= stuck_step)
+                delayed = np.where(hold, prev, delayed).astype(np.float32)
+                prev = delayed
             if "wind_force_n" in rs:
                 xf = state.data.xfrc_applied.at[base_body, :3].set(wind_vec)
                 state = state.replace(data=state.data.replace(xfrc_applied=xf))

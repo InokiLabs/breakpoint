@@ -122,10 +122,11 @@ See `docs/byo-policy.md` and `docs/contract.md`.
 Every legged robot ships a 16-axis space (`configs/<robot>/theta_space.yaml`: floor
 friction and slope, payload and centre of mass, PD gains, joint friction and armature,
 latency, sensor noise, bias and dropout, a timed push). `BP_THETA_SPACE=extended` swaps
-in `theta_space_extended.yaml` (24 axes) for every stage of a run. The 8 added axes are
+in `theta_space_extended.yaml` (30 axes) for every stage of a run. The 14 added axes are
 motor torque limits (battery sag, derating), one weak motor (which one is part of the
-search), joint damping, ground softness and bounce, actuator noise, and a steady force
-on the base (wind, a dragged cable). Undeclared axes are no-ops, so the default space
+search), joint damping, ground softness and bounce, actuator noise, a steady force on the
+base (wind, a dragged cable), latency jitter, sensor delay, motor zero offsets, lost
+command packets, and a motor that seizes mid-run. Undeclared axes are no-ops, so the default space
 gives the same results as before.
 
 ## Rate, gate, verify

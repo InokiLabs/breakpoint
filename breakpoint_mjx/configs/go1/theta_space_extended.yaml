@@ -48,3 +48,17 @@ dims:
   # tether or cable, a leash), direction sampled per episode. Newtons, so scale it to
   # the robot: Go1 ~12 kg, Barkour ~5 kg, G1 ~35 kg.
   wind_force_n: {kind: rollout, bounds: [0.0, 40.0], nominal: 0.0, plausible: [0.0, 15.0]}
+  # CONTROL PATH (rollout): timing and communication faults between policy and motors.
+  # latency_jitter_steps: extra per-step delay 0..round(jitter) on top of latency_steps.
+  latency_jitter_steps: {kind: rollout, bounds: [0.0, 2.0], nominal: 0.0, plausible: [0.0, 1.0]}
+  # obs_delay_steps: the policy sees the sensor reading from this many steps ago.
+  obs_delay_steps: {kind: rollout, bounds: [0.0, 3.0], nominal: 0.0, plausible: [0.0, 1.0]}
+  # action_bias_scale: per-episode constant offset on every motor target (zero calibration).
+  action_bias_scale: {kind: rollout, bounds: [0.0, 0.20], nominal: 0.0, plausible: [0.0, 0.05]}
+  # motor_dropout_prob: per step and motor, a lost command packet (motor keeps last target).
+  motor_dropout_prob: {kind: rollout, bounds: [0.0, 0.30], nominal: 0.0, plausible: [0.0, 0.05]}
+  # stuck motor: from step round(frac * H) on, motor round(stuck_motor_frac * (A-1)) holds
+  # its last target (seized joint / dead driver). frac 1.0 = never; the motor index is a
+  # selector (no severity weight).
+  stuck_motor_step_frac: {kind: rollout, bounds: [0.0, 1.0], nominal: 1.0, plausible: [0.7, 1.0]}
+  stuck_motor_frac: {kind: rollout, bounds: [0.0, 1.0], nominal: 0.0, plausible: [0.0, 1.0]}

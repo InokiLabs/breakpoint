@@ -24,7 +24,9 @@ def test_extended_space_is_the_default_plus_new_axes(robot, monkeypatch):
     ext = load_theta_space(config_path(f"configs/{robot}/theta_space.yaml"))
     assert ext.names()[:len(base.names())] == base.names()
     assert set(EXTENDED_MODEL_DIMS) <= set(ext.names())
-    assert {"action_noise_scale", "wind_force_n"} <= set(ext.names())
+    assert {"action_noise_scale", "wind_force_n", "latency_jitter_steps", "obs_delay_steps",
+            "action_bias_scale", "motor_dropout_prob", "stuck_motor_step_frac",
+            "stuck_motor_frac"} <= set(ext.names())
     for d in ext.dims.values():
         lo, hi = d.bounds
         assert lo <= d.plausible[0] <= d.nominal <= d.plausible[1] <= hi

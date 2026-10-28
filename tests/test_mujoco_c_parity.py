@@ -461,7 +461,9 @@ def extended(fx):
     over = {"motor_strength_scale": 0.8, "fault_motor_frac": 0.3, "fault_strength": 0.6,
             "joint_damping_scale": 1.5, "floor_solref_timeconst": 0.03,
             "floor_solref_dampratio": 0.8, "action_noise_scale": 0.02,
-            "wind_force_n": 10.0, "world_model_scale": 1.0}
+            "wind_force_n": 10.0, "world_model_scale": 1.0, "latency_jitter_steps": 1.0,
+            "obs_delay_steps": 1.0, "action_bias_scale": 0.02, "motor_dropout_prob": 0.05,
+            "stuck_motor_step_frac": 0.6, "stuck_motor_frac": 0.5}
     theta = {n: space.dims[n].nominal for n in space.names()}
     theta.update(over)
     rec = FailureRecord(
