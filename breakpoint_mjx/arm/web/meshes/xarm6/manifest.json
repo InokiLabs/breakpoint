@@ -1,0 +1,118 @@
+{
+ "source": "github.com/xArm-Developer/xarm_ros2@ac736c9 xarm_description/meshes/xarm6/visual",
+ "licence": "BSD-3-Clause (UFACTORY Inc.)",
+ "parts": [
+  {
+   "file": "link_base.bin",
+   "link": -1,
+   "xyz": [
+    0,
+    0,
+    0
+   ],
+   "rpy": [
+    0,
+    0,
+    0
+   ],
+   "color": "#e9ebee",
+   "triangles": 2287
+  },
+  {
+   "file": "link1.bin",
+   "link": 0,
+   "xyz": [
+    0,
+    0,
+    0
+   ],
+   "rpy": [
+    0,
+    0,
+    0
+   ],
+   "color": "#e9ebee",
+   "triangles": 3404
+  },
+  {
+   "file": "link2.bin",
+   "link": 1,
+   "xyz": [
+    0,
+    0,
+    0
+   ],
+   "rpy": [
+    0,
+    0,
+    0
+   ],
+   "color": "#d5d8dc",
+   "triangles": 2484
+  },
+  {
+   "file": "link3.bin",
+   "link": 2,
+   "xyz": [
+    0,
+    0,
+    0
+   ],
+   "rpy": [
+    0,
+    0,
+    0
+   ],
+   "color": "#e9ebee",
+   "triangles": 3900
+  },
+  {
+   "file": "link4.bin",
+   "link": 3,
+   "xyz": [
+    0,
+    0,
+    0
+   ],
+   "rpy": [
+    0,
+    0,
+    0
+   ],
+   "color": "#d5d8dc",
+   "triangles": 3900
+  },
+  {
+   "file": "link5.bin",
+   "link": 4,
+   "xyz": [
+    0,
+    0,
+    0
+   ],
+   "rpy": [
+    0,
+    0,
+    0
+   ],
+   "color": "#e9ebee",
+   "triangles": 3695
+  },
+  {
+   "file": "link6.bin",
+   "link": 5,
+   "xyz": [
+    0,
+    0,
+    0
+   ],
+   "rpy": [
+    0,
+    0,
+    0
+   ],
+   "color": "#d5d8dc",
+   "triangles": 2510
+  }
+ ]
+}

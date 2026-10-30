@@ -1,0 +1,22 @@
+name: Pick and place
+description: >
+  A gripper carrying a 0.5 kg part, three cycles: joint move to an approach pose above the
+  pick, straight-line descent, dwell, lift, joint move over the place, descent, dwell,
+  lift, home. The pick and place dwells are where TCP accuracy and cycle-to-cycle
+  repeatability are measured.
+model: mk5
+control: ros2
+cycles: 3
+tolerance_mm: 1.0
+tool: {payload_kg: 0.5, cog_mm: [0, 0, 60]}
+start_deg: [0, 0, 0, 0, 90, 0]
+moves:
+  - {type: joint, deg: [0, 30.16, 16.64, 0, 43.21, 0], speed: 100, accel: 100}
+  - {type: linear, xyz_mm: [0, -370, 140], speed_mm_s: 60, accel_mm_s2: 250}
+  - {type: dwell, s: 0.5, measure: pick}
+  - {type: linear, xyz_mm: [0, -370, 230], speed_mm_s: 60, accel_mm_s2: 250}
+  - {type: joint, deg: [-39.61, 31.02, 14.9, 0, 44.08, 39.61], speed: 100, accel: 100}
+  - {type: linear, xyz_mm: [240, -290, 140], speed_mm_s: 60, accel_mm_s2: 250}
+  - {type: dwell, s: 0.5, measure: place}
+  - {type: linear, xyz_mm: [240, -290, 230], speed_mm_s: 60, accel_mm_s2: 250}
+  - {type: joint, deg: [0, 0, 0, 0, 90, 0], speed: 100, accel: 100}

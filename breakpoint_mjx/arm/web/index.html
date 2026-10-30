@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stress Lab · BreakPoint</title>
+<link rel="stylesheet" href="/static/style.css">
+<script type="importmap">
+{"imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="mark" aria-hidden="true"></span>
+    <span class="name">BreakPoint</span>
+    <span class="sep">/</span>
+    <span class="product">Stress Lab</span>
+  </div>
+  <div class="chips">
+    <span class="chip" id="chip-robot">AR4</span>
+    <span class="chip" id="chip-control" title="Controller model">ROS 2 driver</span>
+    <button class="chip chip-btn" id="chip-sim" title="Which simulator the tests run on">Simulator: raw</button>
+  </div>
+  <div class="topright">
+    <span class="static-badge" id="static-badge" hidden>Read-only report</span>
+    <span class="muted small" id="workers"></span>
+  </div>
+</header>
+
+<main class="layout">
+  <!-- Program ------------------------------------------------------------------------ -->
+  <aside class="panel left" aria-label="Program">
+    <div class="panel-head">
+      <h2>Program</h2>
+      <label class="btn ghost small" id="upload-program-btn" title="Upload a program YAML">
+        Upload<input type="file" id="upload-program" accept=".yaml,.yml" hidden>
+      </label>
+    </div>
+    <select id="program-select" aria-label="Program"></select>
+    <p class="muted small" id="program-desc"></p>
+    <dl class="facts" id="program-facts"></dl>
+    <div id="program-issues"></div>
+    <h3>Moves</h3>
+    <ol class="moves" id="program-moves"></ol>
+    <details class="yaml">
+      <summary>Program source</summary>
+      <pre id="program-yaml"></pre>
+    </details>
+  </aside>
+
+  <!-- Viewer ------------------------------------------------------------------------- -->
+  <section class="center">
+    <div class="viewport" id="viewport">
+      <div class="hud top-left">
+        <div class="hud-title" id="replay-title">Nominal run</div>
+        <div class="hud-sub" id="replay-sub">Loading…</div>
+      </div>
+      <div class="hud top-right legend">
+        <span><i class="sw sw-actual"></i>Actual</span>
+        <span><i class="sw sw-ghost"></i>Commanded</span>
+        <span><i class="sw sw-path"></i>TCP path</span>
+        <label class="mag">Deviation ×
+          <select id="magnify">
+            <option value="1">1</option><option value="10">10</option>
+            <option value="50" selected>50</option><option value="200">200</option>
+          </select>
+        </label>
+      </div>
+      <div class="toast" id="toast" hidden></div>
+      <div class="busy" id="viewer-busy" hidden><span class="spinner"></span> Simulating…</div>
+    </div>
+    <div class="transport">
+      <button class="icon-btn" id="play" aria-label="Play">▶</button>
+      <div class="scrub">
+        <canvas id="markers" height="10"></canvas>
+        <input type="range" id="scrub" min="0" max="1000" value="0" aria-label="Time">
+      </div>
+      <span class="mono small" id="clock">0.00 s</span>
+      <select id="speed" aria-label="Playback speed">
+        <option value="0.5">0.5×</option><option value="1" selected>1×</option>
+        <option value="2">2×</option><option value="4">4×</option>
+      </select>
+    </div>
+    <div class="telemetry">
+      <div class="tele-head">
+        <div class="seg" id="tele-tabs" role="tablist">
+          <button class="on" data-k="err">Following error</button>
+          <button data-k="util">Torque used</button>
+          <button data-k="tcp">TCP deviation</button>
+          <button data-k="load">Load angle</button>
+        </div>
+        <div class="verdict" id="verdict"></div>
+      </div>
+      <div class="chart" id="tele-chart"></div>
+      <ul class="events" id="events"></ul>
+    </div>
+  </section>
+
+  <!-- Tests -------------------------------------------------------------------------- -->
+  <aside class="panel right" aria-label="Tests">
+    <nav class="tabs" role="tablist">
+      <button class="on" data-tab="stress">Stress test</button>
+      <button data-tab="envelope">Envelope</button>
+      <button data-tab="repeat">Repeatability</button>
+      <button data-tab="real">Sim vs real</button>
+      <button data-tab="report">Report</button>
+    </nav>
+
+    <section class="tab on" data-tab="stress">
+      <p class="lede">Search payload, CoG, motion profile, drive-train and fixture conditions for
+        the ones where this program stops doing its job.</p>
+      <div class="row">
+        <div class="seg" id="budget">
+          <button data-b="quick" class="on">Quick</button>
+          <button data-b="standard">Standard</button>
+          <button data-b="deep">Deep</button>
+        </div>
+        <button class="btn primary" id="run-search">Run stress test</button>
+      </div>
+      <div class="progress" id="search-progress" hidden><div class="bar"></div><span></span></div>
+      <div id="search-summary"></div>
+      <div id="families"></div>
+    </section>
+
+    <section class="tab" data-tab="envelope">
+      <p class="lede">Sweep two conditions and map where the program passes. The dashed box is
+        the plausible band; the dot is nominal.</p>
+      <div class="form">
+        <label>Across <select id="env-x"></select></label>
+        <label>Up <select id="env-y"></select></label>
+        <label>Grid <select id="env-n"><option>5</option><option selected>7</option><option>9</option></select></label>
+      </div>
+      <button class="btn primary" id="run-envelope">Map envelope</button>
+      <div class="progress" id="env-progress" hidden><div class="bar"></div><span></span></div>
+      <div id="envelope"></div>
+    </section>
+
+    <section class="tab" data-tab="repeat">
+      <p class="lede">Run the program many times back to back and watch each taught point for
+        accumulated error.</p>
+      <div class="form">
+        <label>Cycles <input type="number" id="rep-cycles" min="2" max="40" value="12"></label>
+        <label>Condition <select id="rep-cond"><option value="">Nominal</option></select></label>
+      </div>
+      <button class="btn primary" id="run-repeat">Run cycles</button>
+      <div class="progress" id="rep-progress" hidden><div class="bar"></div><span></span></div>
+      <div id="repeat"></div>
+    </section>
+
+    <section class="tab" data-tab="real">
+      <p class="lede">Fit the simulator to your robot's own log (commanded vs encoder
+        feedback, plus TCP measurements if you have them). Tests then run on the calibrated
+        simulator.</p>
+      <div class="form">
+        <label>Log <select id="log-select"></select></label>
+      </div>
+      <div class="row wrap">
+        <label class="btn ghost">Upload CSV<input type="file" id="upload-log" accept=".csv" hidden></label>
+        <button class="btn ghost" id="synth-log" title="A simulated stand-in for a real log">Generate synthetic log</button>
+        <label class="check"><input type="checkbox" id="fit-payload"> Fit payload</label>
+      </div>
+      <button class="btn primary" id="run-fit">Calibrate</button>
+      <div class="progress" id="fit-progress" hidden><div class="bar"></div><span></span></div>
+      <div id="calibration"></div>
+      <details class="fmt">
+        <summary>Log format</summary>
+        <p class="small">CSV with <code>t</code> [s], <code>cmd_j1..cmd_j6</code> [deg] (the
+          joint_trajectory_controller reference) and <code>fb_j1..fb_j6</code> [deg]
+          (<code>/joint_states</code>). Optional <code>tcp_x,tcp_y,tcp_z</code> [mm] where an
+          external measurement exists. <code>scripts/ar4_bag_to_csv.py</code> converts a
+          rosbag2 recording.</p>
+      </details>
+    </section>
+
+    <section class="tab" data-tab="report">
+      <p class="lede">Every test is saved as a study. Export one as a self-contained HTML page
+        or as signable JSON (<code>breakpoint sign</code> / <code>verify</code>).</p>
+      <div id="studies"></div>
+    </section>
+  </aside>
+</main>
+
+<script type="module" src="/static/app.js"></script>
+</body>
+</html>

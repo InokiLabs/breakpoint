@@ -13,3 +13,4 @@ media/_jaxcache/
 # benchmark run outputs (large; regenerate with benchmark/run_benchmark.py)
 benchmark/results/
 .DS_Store
+demo_pack/

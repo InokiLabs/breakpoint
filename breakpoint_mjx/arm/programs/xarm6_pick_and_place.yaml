@@ -1,0 +1,21 @@
+name: xArm 6 pick and place
+description: >
+  An xArm 6 with a 2 kg gripper and part (centre of gravity 60 mm out), three cycles:
+  joint moves between approach poses at 50 % speed, straight-line descents to the pick and
+  the place at 200 mm/s. TCP accuracy and repeatability are measured at the two dwells.
+model: xarm6
+control: servo
+cycles: 3
+tolerance_mm: 0.5
+tool: {payload_kg: 2.0, cog_mm: [0, 0, 60]}
+start_deg: [0, -30, -60, 0, 90, 0]
+moves:
+  - {type: joint, deg: [0, -18.65, -32.11, 0, 50.75, 0], speed: 50, accel: 50}
+  - {type: linear, xyz_mm: [350, 0, 120], speed_mm_s: 200, accel_mm_s2: 1000}
+  - {type: dwell, s: 0.4, measure: pick}
+  - {type: linear, xyz_mm: [350, 0, 300], speed_mm_s: 200, accel_mm_s2: 1000}
+  - {type: joint, deg: [66.8, -12.26, -38.0, 0, 50.26, 66.8], speed: 50, accel: 50}
+  - {type: linear, xyz_mm: [150, 350, 120], speed_mm_s: 200, accel_mm_s2: 1000}
+  - {type: dwell, s: 0.4, measure: place}
+  - {type: linear, xyz_mm: [150, 350, 300], speed_mm_s: 200, accel_mm_s2: 1000}
+  - {type: joint, deg: [0, -30, -60, 0, 90, 0], speed: 50, accel: 50}

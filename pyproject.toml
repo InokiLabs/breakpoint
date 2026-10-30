@@ -34,6 +34,9 @@ attest = ["cryptography>=42"]   # ed25519 report signing (breakpoint keys/sign/v
 llm = ["anthropic>=0.69", "httpx>=0.27"]
 dev = ["pytest>=8", "scikit-learn>=1.4"]   # clustering tests import sklearn without the sim stack
 bench = ["matplotlib>=3.8", "scipy>=1.11"]   # benchmark/ figures and statistics
+# Stress Lab for programmed arms (AR4, UR5e, xArm 6): CPU only, no jax needed
+arm = ["mujoco>=3.2", "scipy>=1.11", "flask>=3.0"]
+rosbag = ["rosbags>=0.10"]   # scripts/ar4_bag_to_csv.py: robot logs without a ROS install
 
 [project.scripts]
 breakpoint = "breakpoint_mjx.cli:main"
@@ -49,6 +52,8 @@ include = ["breakpoint_mjx*"]
 # `breakpoint demo --view` opens.
 [tool.setuptools.package-data]
 breakpoint_mjx = ["configs/*.yaml", "configs/**/*.yaml", "batteries/*.yaml",
+                  "arm/programs/*.yaml", "arm/web/*.html", "arm/web/*.css", "arm/web/*.js",
+                  "arm/web/meshes/*/*",
                   "assets/demo/*.pkl", "assets/demo/*.yaml",
                   "assets/demo/sample_report/*.html", "assets/demo/sample_report/*.json"]
 

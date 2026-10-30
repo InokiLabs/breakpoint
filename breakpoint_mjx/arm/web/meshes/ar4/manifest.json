@@ -1,0 +1,294 @@
+{
+ "source": "github.com/Annin-Robotics/ar4_ros_driver@6a3ebb11cedab12cd1d29b41d63aa270a008ab8b/annin_ar4_description/meshes/ar4_mk5",
+ "licence": "MIT (Copyright (c) 2021 Dexter Ong; Annin Robotics)",
+ "parts": [
+  {
+   "file": "Link_Base_Aluminum.bin",
+   "link": -1,
+   "xyz": [
+    0,
+    0,
+    0
+   ],
+   "rpy": [
+    0,
+    0,
+    -1.5708
+   ],
+   "color": "#dcdcdc",
+   "triangles": 3987
+  },
+  {
+   "file": "Link_Base_Enclosure.bin",
+   "link": -1,
+   "xyz": [
+    0,
+    0,
+    0
+   ],
+   "rpy": [
+    0,
+    0,
+    -1.5708
+   ],
+   "color": "#a0a0a0",
+   "triangles": 3032
+  },
+  {
+   "file": "Link_Base_Motor.bin",
+   "link": -1,
+   "xyz": [
+    0,
+    0,
+    0
+   ],
+   "rpy": [
+    0,
+    0,
+    -1.5708
+   ],
+   "color": "#141414",
+   "triangles": 2994
+  },
+  {
+   "file": "Link_1_Aluminum.bin",
+   "link": 0,
+   "xyz": [
+    0,
+    0,
+    0
+   ],
+   "rpy": [
+    0,
+    0,
+    0
+   ],
+   "color": "#dcdcdc",
+   "triangles": 3073
+  },
+  {
+   "file": "Link_1_Motor.bin",
+   "link": 0,
+   "xyz": [
+    0,
+    0,
+    0
+   ],
+   "rpy": [
+    0,
+    0,
+    0
+   ],
+   "color": "#141414",
+   "triangles": 3575
+  },
+  {
+   "file": "Link_2_Aluminum.bin",
+   "link": 1,
+   "xyz": [
+    0,
+    0,
+    -0.00887
+   ],
+   "rpy": [
+    3.14,
+    0,
+    0
+   ],
+   "color": "#dcdcdc",
+   "triangles": 2912
+  },
+  {
+   "file": "Link_2_Motor.bin",
+   "link": 1,
+   "xyz": [
+    0,
+    0,
+    -0.00887
+   ],
+   "rpy": [
+    3.14,
+    0,
+    0
+   ],
+   "color": "#141414",
+   "triangles": 608
+  },
+  {
+   "file": "Link_2_Cover.bin",
+   "link": 1,
+   "xyz": [
+    0,
+    0,
+    -0.00887
+   ],
+   "rpy": [
+    3.14,
+    0,
+    0
+   ],
+   "color": "#0059ff",
+   "triangles": 3333
+  },
+  {
+   "file": "Link_2_Logo.bin",
+   "link": 1,
+   "xyz": [
+    0,
+    0,
+    -0.00887
+   ],
+   "rpy": [
+    3.14,
+    0,
+    0
+   ],
+   "color": "#ffffff",
+   "triangles": 714
+  },
+  {
+   "file": "Link_3_Aluminum.bin",
+   "link": 2,
+   "xyz": [
+    0,
+    0,
+    -0.03671
+   ],
+   "rpy": [
+    0,
+    0,
+    0
+   ],
+   "color": "#dcdcdc",
+   "triangles": 3661
+  },
+  {
+   "file": "Link_3_Motor.bin",
+   "link": 2,
+   "xyz": [
+    0,
+    0,
+    -0.03671
+   ],
+   "rpy": [
+    0,
+    0,
+    0
+   ],
+   "color": "#141414",
+   "triangles": 2764
+  },
+  {
+   "file": "Link_4_Aluminum.bin",
+   "link": 3,
+   "xyz": [
+    0,
+    0,
+    -0.07594
+   ],
+   "rpy": [
+    0,
+    0,
+    -1.5708
+   ],
+   "color": "#dcdcdc",
+   "triangles": 3456
+  },
+  {
+   "file": "Link_4_Motor.bin",
+   "link": 3,
+   "xyz": [
+    0,
+    0,
+    -0.07594
+   ],
+   "rpy": [
+    0,
+    0,
+    -1.5708
+   ],
+   "color": "#141414",
+   "triangles": 2180
+  },
+  {
+   "file": "Link_4_Cover.bin",
+   "link": 3,
+   "xyz": [
+    0,
+    0,
+    -0.07594
+   ],
+   "rpy": [
+    0,
+    0,
+    -1.5708
+   ],
+   "color": "#0059ff",
+   "triangles": 3620
+  },
+  {
+   "file": "Link_4_Logo.bin",
+   "link": 3,
+   "xyz": [
+    0,
+    0,
+    -0.07594
+   ],
+   "rpy": [
+    0,
+    0,
+    -1.5708
+   ],
+   "color": "#ffffff",
+   "triangles": 706
+  },
+  {
+   "file": "Link_5_Aluminum.bin",
+   "link": 4,
+   "xyz": [
+    0,
+    0,
+    -0.0275
+   ],
+   "rpy": [
+    0,
+    0,
+    0
+   ],
+   "color": "#dcdcdc",
+   "triangles": 3932
+  },
+  {
+   "file": "Link_5_Motor.bin",
+   "link": 4,
+   "xyz": [
+    0,
+    0,
+    -0.0275
+   ],
+   "rpy": [
+    0,
+    0,
+    0
+   ],
+   "color": "#141414",
+   "triangles": 532
+  },
+  {
+   "file": "Link_6_Aluminum.bin",
+   "link": 5,
+   "xyz": [
+    0,
+    0,
+    -0.016
+   ],
+   "rpy": [
+    0,
+    0,
+    0
+   ],
+   "color": "#dcdcdc",
+   "triangles": 842
+  }
+ ]
+}

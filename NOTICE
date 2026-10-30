@@ -6,3 +6,11 @@ This product includes software developed at Inoki Labs.
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this
 software except in compliance with the License. You may obtain a copy of the License in
 the LICENSE file or at http://www.apache.org/licenses/LICENSE-2.0
+
+Third-party data in breakpoint_mjx/arm (robot descriptions and decimated meshes):
+- Annin Robotics AR4: github.com/Annin-Robotics/ar4_ros_driver, MIT License,
+  Copyright (c) 2021 Dexter Ong. Licence text: arm/web/meshes/ar4/LICENSE-ar4_ros_driver.
+- Universal Robots UR5e: github.com/UniversalRobots/Universal_Robots_ROS2_Description,
+  BSD 3-Clause. Licence text: arm/web/meshes/ur5e/LICENSE-ur_description.
+- UFACTORY xArm 6: github.com/xArm-Developer/xarm_ros2, BSD 3-Clause, Copyright (c)
+  2018 UFACTORY Inc. Licence text: arm/web/meshes/xarm6/LICENSE-xarm_ros2.

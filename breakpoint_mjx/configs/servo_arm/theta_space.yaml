@@ -1,0 +1,28 @@
+# Stress space for servo arms with harmonic drives (UR5e, xArm 6). Same schema as every
+# theta space; payload nominal is replaced by the program's own payload at run time.
+dims:
+  # --- payload and centre of gravity (relative to the program's own tooling) ------------
+  payload_kg:      {kind: model, bounds: [0.0, 8.0], nominal: 3.0, plausible: [0.0, 5.0]}
+  cog_x_mm:        {kind: model, bounds: [-150, 150], nominal: 0, plausible: [-50, 50]}
+  cog_y_mm:        {kind: model, bounds: [-150, 150], nominal: 0, plausible: [-50, 50]}
+  cog_z_mm:        {kind: model, bounds: [-50, 250], nominal: 0, plausible: [-20, 100]}
+  # payload configured in the controller vs the real one: the gravity feed-forward is
+  # computed from the configured value (0.7 = configured 30 % too light)
+  ff_scale:        {kind: model, bounds: [0.3, 1.5], nominal: 1.0, plausible: [0.8, 1.2]}
+  # --- motion profile: scale on the program's speed / accel / decel ---------------------
+  speed_scale:     {kind: rollout, bounds: [0.5, 2.5], nominal: 1.0, plausible: [0.5, 1.6]}
+  accel_scale:     {kind: rollout, bounds: [0.5, 5.0], nominal: 1.0, plausible: [0.5, 2.5]}
+  decel_scale:     {kind: rollout, bounds: [0.5, 5.0], nominal: 1.0, plausible: [0.5, 2.5]}
+  # --- drive train ----------------------------------------------------------------------
+  # peak torque available (thermal derating, a weak drive)
+  torque_scale:    {kind: model, bounds: [0.5, 1.1], nominal: 1.0, plausible: [0.8, 1.05]}
+  friction_scale:  {kind: model, bounds: [0.5, 3.0], nominal: 1.0, plausible: [0.7, 2.0]}
+  backlash_scale:  {kind: model, bounds: [0.5, 10.0], nominal: 1.0, plausible: [0.5, 4.0]}
+  stiffness_scale: {kind: model, bounds: [0.3, 1.5], nominal: 1.0, plausible: [0.6, 1.2]}
+  # servo tuning (position-loop bandwidth)
+  gain_scale:      {kind: model, bounds: [0.4, 1.6], nominal: 1.0, plausible: [0.8, 1.2]}
+  # --- where the job sits: a fixture placed off its taught position ---------------------
+  shift_x_mm:      {kind: rollout, bounds: [-200, 200], nominal: 0, plausible: [-50, 50]}
+  shift_y_mm:      {kind: rollout, bounds: [-200, 200], nominal: 0, plausible: [-50, 50]}
+  shift_z_mm:      {kind: rollout, bounds: [-150, 150], nominal: 0, plausible: [-50, 50]}
+  reach_scale:     {kind: rollout, bounds: [0.7, 1.5], nominal: 1.0, plausible: [0.9, 1.15]}

@@ -24,6 +24,13 @@ On top of the search engine sit three evidence layers:
   a canonical JSON report, so anyone holding the public key can check a rating was not
   edited after it was produced.
 
+**Stress Lab** (`breakpoint arm`) applies the same idea to arms running conventional
+programs: Annin AR4, Universal Robots UR5e and UFACTORY xArm 6. It searches the conditions
+that break a taught program (payload, centre of gravity, motion profile, drive train,
+fixture position), isolates the minimal cause of each failure, maps the operating envelope
+and calibrates the simulator to the robot's own logs. CPU only: `pip install -e ".[arm]"`,
+then `breakpoint arm serve`. See `docs/stress-lab.md`.
+
 Licensed under the Apache License, Version 2.0 (see `LICENSE` and `NOTICE`).
 
 ## Open source vs commercial edition

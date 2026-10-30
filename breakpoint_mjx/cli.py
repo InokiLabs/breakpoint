@@ -992,6 +992,9 @@ def build_parser():
     vf.add_argument("--policy", default=None, metavar="CHECKPOINT",
                     help="also check policy.sha256 against this local checkpoint file")
     vf.set_defaults(func=cmd_verify)
+
+    from breakpoint_mjx.arm.cli import add_parser as add_arm_parser
+    add_arm_parser(sub)
     return p
 
 

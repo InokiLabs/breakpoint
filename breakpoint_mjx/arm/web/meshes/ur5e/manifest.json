@@ -1,0 +1,118 @@
+{
+ "source": "github.com/UniversalRobots/Universal_Robots_ROS2_Description@81f7c9f meshes/ur5e/collision",
+ "licence": "BSD-3-Clause (Universal Robots A/S)",
+ "parts": [
+  {
+   "file": "base.bin",
+   "link": -1,
+   "xyz": [
+    0,
+    0,
+    0
+   ],
+   "rpy": [
+    0,
+    0,
+    0
+   ],
+   "color": "#c9cdd2",
+   "triangles": 420
+  },
+  {
+   "file": "shoulder.bin",
+   "link": 0,
+   "xyz": [
+    0,
+    0,
+    0
+   ],
+   "rpy": [
+    0,
+    0,
+    3.141592653589793
+   ],
+   "color": "#3a9ad9",
+   "triangles": 1400
+  },
+  {
+   "file": "upperarm.bin",
+   "link": 1,
+   "xyz": [
+    0,
+    0,
+    0.138
+   ],
+   "rpy": [
+    1.5707963267948966,
+    0,
+    -1.5707963267948966
+   ],
+   "color": "#c9cdd2",
+   "triangles": 1694
+  },
+  {
+   "file": "forearm.bin",
+   "link": 2,
+   "xyz": [
+    0,
+    0,
+    0.007
+   ],
+   "rpy": [
+    1.5707963267948966,
+    0,
+    -1.5707963267948966
+   ],
+   "color": "#c9cdd2",
+   "triangles": 1016
+  },
+  {
+   "file": "wrist1.bin",
+   "link": 3,
+   "xyz": [
+    0,
+    0,
+    -0.127
+   ],
+   "rpy": [
+    1.5707963267948966,
+    0,
+    0
+   ],
+   "color": "#3a9ad9",
+   "triangles": 1190
+  },
+  {
+   "file": "wrist2.bin",
+   "link": 4,
+   "xyz": [
+    0,
+    0,
+    -0.0997
+   ],
+   "rpy": [
+    0,
+    0,
+    0
+   ],
+   "color": "#3a9ad9",
+   "triangles": 1350
+  },
+  {
+   "file": "wrist3.bin",
+   "link": 5,
+   "xyz": [
+    0,
+    -0.0005,
+    -0.0989
+   ],
+   "rpy": [
+    1.5707963267948966,
+    0,
+    0
+   ],
+   "color": "#c9cdd2",
+   "triangles": 142
+  }
+ ]
+}

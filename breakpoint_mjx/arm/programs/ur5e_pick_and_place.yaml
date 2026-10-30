@@ -1,0 +1,22 @@
+name: UR5e pick and place
+description: >
+  A UR5e with a 3 kg gripper and part (centre of gravity 80 mm out on the tool axis),
+  three cycles: joint moves between approach poses, straight-line descents to the pick and
+  the place. Joint moves at 60 % speed / 60 % acceleration, linear moves at UR's default
+  250 mm/s and 1.2 m/s^2. TCP accuracy and repeatability are measured at the two dwells.
+model: ur5e
+control: servo
+cycles: 3
+tolerance_mm: 0.5
+tool: {payload_kg: 3.0, cog_mm: [0, 0, 80]}
+start_deg: [0, -90, 90, -90, -90, 0]
+moves:
+  - {type: joint, deg: [2.11, -88.49, 117.09, -118.6, -90.0, 2.11], speed: 60, accel: 60}
+  - {type: linear, xyz_mm: [450, 150, 120], speed_mm_s: 250, accel_mm_s2: 1200}
+  - {type: dwell, s: 0.4, measure: pick}
+  - {type: linear, xyz_mm: [450, 150, 300], speed_mm_s: 250, accel_mm_s2: 1200}
+  - {type: joint, deg: [63.54, -83.68, 111.87, -118.2, -90.0, 63.54], speed: 60, accel: 60}
+  - {type: linear, xyz_mm: [100, 500, 120], speed_mm_s: 250, accel_mm_s2: 1200}
+  - {type: dwell, s: 0.4, measure: place}
+  - {type: linear, xyz_mm: [100, 500, 300], speed_mm_s: 250, accel_mm_s2: 1200}
+  - {type: joint, deg: [0, -90, 90, -90, -90, 0], speed: 60, accel: 60}

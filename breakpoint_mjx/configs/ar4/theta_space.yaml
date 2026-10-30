@@ -1,0 +1,27 @@
+# AR4 stress space: the conditions a stress test varies. Same schema as every other
+# theta space (breakpoint_mjx.config.load_theta_space); ``plausible`` is the band a real
+# installation can be expected to see, ``bounds`` how far the search may push.
+# "model" axes change the robot's physics, "rollout" axes change the program it runs.
+dims:
+  # --- payload and centre of gravity (relative to the program's own tooling) ------------
+  payload_kg:      {kind: model, bounds: [0.0, 3.0], nominal: 0.5, plausible: [0.0, 2.0]}
+  cog_x_mm:        {kind: model, bounds: [-100, 100], nominal: 0, plausible: [-40, 40]}
+  cog_y_mm:        {kind: model, bounds: [-100, 100], nominal: 0, plausible: [-40, 40]}
+  cog_z_mm:        {kind: model, bounds: [-40, 120], nominal: 0, plausible: [-20, 60]}
+  # --- motion profile: scale on the program's speed / accel / decel ---------------------
+  speed_scale:     {kind: rollout, bounds: [0.5, 2.0], nominal: 1.0, plausible: [0.5, 1.5]}
+  accel_scale:     {kind: rollout, bounds: [0.5, 6.0], nominal: 1.0, plausible: [0.5, 3.0]}
+  decel_scale:     {kind: rollout, bounds: [0.5, 6.0], nominal: 1.0, plausible: [0.5, 3.0]}
+  # --- drive train (the quantities simulation usually gets wrong) -----------------------
+  # driver current setting / motor heating
+  torque_scale:    {kind: model, bounds: [0.4, 1.1], nominal: 1.0, plausible: [0.75, 1.05]}
+  # supply voltage: moves the stepper torque-speed corner
+  supply_scale:    {kind: model, bounds: [0.4, 1.2], nominal: 1.0, plausible: [0.7, 1.1]}
+  friction_scale:  {kind: model, bounds: [0.5, 3.0], nominal: 1.0, plausible: [0.7, 2.0]}
+  backlash_scale:  {kind: model, bounds: [0.5, 6.0], nominal: 1.0, plausible: [0.5, 3.0]}
+  stiffness_scale: {kind: model, bounds: [0.3, 1.5], nominal: 1.0, plausible: [0.6, 1.2]}
+  # --- where the job sits: a fixture placed off its taught position ---------------------
+  shift_x_mm:      {kind: rollout, bounds: [-150, 150], nominal: 0, plausible: [-40, 40]}
+  shift_y_mm:      {kind: rollout, bounds: [-150, 150], nominal: 0, plausible: [-40, 40]}
+  shift_z_mm:      {kind: rollout, bounds: [-150, 150], nominal: 0, plausible: [-40, 40]}
+  reach_scale:     {kind: rollout, bounds: [0.8, 1.4], nominal: 1.0, plausible: [0.9, 1.15]}
