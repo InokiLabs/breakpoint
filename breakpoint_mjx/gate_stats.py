@@ -195,3 +195,39 @@ def decide(pairs, alpha: float = DEFAULT_ALPHA, tolerance: float = 0.0) -> dict:
         "min_up_per_cell": min_detectable_up(per_seed_pairs, half / max(len(cells), 1)),
         "min_up_pooled": min_detectable_up(n_c, half),
     }
+
+
+# --------------------------------------------------------------------------------------
+# degradation: does the candidate track its command worse on seeds where neither fell?
+# --------------------------------------------------------------------------------------
+
+#: Relative deadband on tracking error: a seed-pair counts only when one checkpoint's error
+#: exceeds the other's by more than this factor. Symmetric in the log ratio, so under
+#: "neither is worse" a counted pair is a fair coin and the sign test stays exact.
+DEFAULT_DEGRADATION_MARGIN = 0.10
+
+
+def degradation_test(pairs, margin: float = DEFAULT_DEGRADATION_MARGIN,
+                     alpha: float = DEFAULT_ALPHA) -> dict:
+    """One-sided exact sign test on paired tracking error.
+
+    ``pairs`` is a list of ``(baseline_error, candidate_error)`` for the (cell, seed) pairs
+    where NEITHER checkpoint fell (after a fall the tracking error measures the fall, not
+    the gait). Falls are binary and need many seeds to separate; most seeds never fall,
+    and their tracking error is a continuous signal of a policy getting worse before it
+    starts falling. ``up`` = candidate worse by more than ``margin``, ``down`` = better.
+    """
+    if margin < 0:
+        raise ValueError("margin must be >= 0")
+    r = 1.0 + float(margin)
+    up = sum(1 for b, c in pairs if c > b * r)
+    down = sum(1 for b, c in pairs if b > c * r)
+    p = sign_test_p(up, down)
+    ratios = sorted(c / b for b, c in pairs if b > 0)
+    med = ratios[len(ratios) // 2] if ratios else None
+    return {"method": ("paired exact sign test on tracking error over seed-pairs where "
+                       f"neither fell (deadband x{r:g})"),
+            "n_pairs": len(pairs), "up": up, "down": down, "p": p,
+            "median_ratio": med, "margin": float(margin), "alpha": alpha,
+            "significant": bool(p < alpha and up > down)}
+

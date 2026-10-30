@@ -94,6 +94,29 @@ def legged_summarize(state, consts):
     return out
 
 
+def legged_summarize_in_frame(R_heading):
+    """``legged_summarize`` with velocities expressed in a fixed frame mounted on the torso.
+
+    ``R_heading`` (3x3, constant) is that frame's orientation relative to the torso body
+    frame -- the robot's IMU / heading site, the frame its joystick command is defined in.
+    ``legged_summarize`` reads velocities in the torso BODY frame, which is right only when
+    the two coincide (true for every Playground robot except Barkour, whose ``imu_frame``
+    site is yawed 180 deg: its body x axis points backwards, so forward walking read as
+    reverse and tracking_error was ~1.5 on policies that track to ~0.14).
+    ``(R.T @ v) @ R_heading`` is ``R_heading.T @ R.T @ v``; the traced array stays the
+    left operand, so this is jit-safe with a numpy ``R_heading``.
+    """
+    Rh = np.asarray(R_heading, dtype=np.float32)
+
+    def summarize(state, consts):
+        out = legged_summarize(state, consts)
+        out["lin_vel"] = out["lin_vel"] @ Rh
+        out["ang_vel"] = out["ang_vel"] @ Rh
+        return out
+
+    return summarize
+
+
 # The legged trajectory/summary contract, for docs + a light test check. The first five
 # keys are the historical stay-upright contract; the last three are the physical-validity
 # keys (floor-relative height, worst contact penetration, max |qacc|) that

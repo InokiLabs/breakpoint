@@ -554,8 +554,8 @@ class GenesisBackend:
 
         Same recorded key, same per-step 3-way split, same episode-level draws
         (``fold_in(key, 1)`` obs bias, ``fold_in(key, 2)`` push direction), same
-        noise -> bias -> dropout order, same latency ring buffer (newest at 0), same
-        gait-timed push applied BEFORE the step, same per-target summary hook. The only
+        noise -> bias -> dropout (sample-and-hold, sensor channels) order, same latency ring
+        buffer (newest at 0), same gait-timed push applied BEFORE the step, same per-target summary hook. The only
         intended difference is the engine underneath.
         """
         # The exact-repro key FIRST: a legacy record must be refused before any engine
@@ -613,15 +613,21 @@ class GenesisBackend:
         push_vec = push_mag * np.array([np.cos(push_angle), np.sin(push_angle), 0.0])
         push_step = int(np.clip(round(push_step_frac * (horizon - 1)), 0, horizon - 1))
 
+        from breakpoint_mjx.obs_adversary import obs_sensor_mask, perturb_obs
+
+        sensor_mask = obs_sensor_mask(env, obs_vec.shape[-1])
+        held = perturb_obs(np, obs_vec, 0.0, obs_bias, np.zeros(obs_vec.shape, bool),
+                           obs_vec, sensor_mask)[0]
         buf = np.zeros((LMAX + 1, nu))
         steps = []
         for t in range(horizon):
             key, nk_noise, nk_policy = self._split3(key)
             gauss = obs_noise_scale * self._normal(nk_noise, obs_vec.shape)
-            keep = (self._uniform(self._fold_in(nk_noise, 1), obs_vec.shape)
-                    >= obs_dropout_prob).astype(obs_vec.dtype)
-            # Dropout zeros channels LAST, so a dropped channel reads exactly 0.
-            perturbed = (obs_vec + gauss + obs_bias) * keep
+            dropped = (self._uniform(self._fold_in(nk_noise, 1), obs_vec.shape)
+                       < obs_dropout_prob)
+            # Same sensor-only, sample-and-hold rule as rollout_one.
+            perturbed, held = perturb_obs(np, obs_vec, gauss, obs_bias, dropped, held,
+                                          sensor_mask)
             if callable(getattr(self.policy_fn, "init_carry", None)):
                 raise NotImplementedError(
                     "stateful (history / recurrent) policies are not wired into the "

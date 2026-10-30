@@ -63,11 +63,26 @@ significantly, are re-run alone on fresh seeds (`10000, 10001, ...`, never a bat
 seed) and decided again. Stage 1 (battery seeds) and stage 2 (fresh seeds, suspect cells
 only) each get `alpha / 2`; stage 2 sees only new, independent seeds, so choosing cells
 from stage-1 data does not bias it and the overall false-alarm bound still holds.
-Escalation costs only the suspect cells. It defaults to 32 seeds for `standard` and is off
-for `smoke` (a CPU runner pays for every rollout); pass `--escalate-to 16` to turn it on.
+Escalation costs only the suspect cells. It defaults to 32 seeds for `standard` and 16 for
+`smoke`. Smoke used to default to off, but with 4 seeds a single cell can never reach
+significance on stage 1 (best one-sided p = 1/16 before Holm), so a candidate that fell on
+every seed of one condition passed. `--escalate-to 0` turns it off.
 
 A cell that was escalated is labelled on its fresh-seed evidence: `REGRESSED
 (escalated)`, `cleared on more seeds`, or `worse, not significant` (a warning, exit 0).
+
+**Tracking degradation.** Falls are binary, and most seeds of a healthy policy never fall,
+so the fall tests ignore most of the evidence a run produces. On every (cell, seed) where
+*neither* checkpoint fell, the gate also compares the mean velocity-tracking error: a
+pair counts as worse when the candidate's error exceeds the baseline's by more than
+`--degradation-margin` (default 10%), better when the reverse holds, and an exact
+one-sided sign test runs over the counted pairs. The deadband is symmetric in the error
+ratio, so under "no change" a counted pair is a fair coin and the test is exact. This
+catches a policy that is getting worse at walking before it starts falling. It is
+advisory by default (reported, exit 0); `--fail-on-degradation` lets it fail the build,
+and then alpha is split in half between it and the fall tests so the overall false-alarm
+bound stays at `--alpha`. Seeds that fell are left out: after a fall the error measures
+the fall, not the gait.
 
 **The original rule (`--decision rule`).** A cell regresses when the baseline passed it
 (fall rate at most the battery's pass rule, 1/8), the candidate failed it, and the fall

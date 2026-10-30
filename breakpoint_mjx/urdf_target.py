@@ -1214,6 +1214,9 @@ class URDFEnv:
             (n, slice(a, b)) for n, a, b in _obs_layout_spec(self._nu, self._floating)
         )
         self._obs_dim = self._obs_layout[-1][1].stop
+        from breakpoint_mjx.obs_adversary import set_obs_non_sensor
+        set_obs_non_sensor(self, [(sl.start, sl.stop - sl.start) for n, sl in self._obs_layout
+                                  if n in ("last_action", "command")])
 
     # -- contract surface ---------------------------------------------------- #
     @property

@@ -332,6 +332,10 @@ class _FakeArr:
         self.arr = np.asarray(arr, dtype=float)
 
     @property
+    def shape(self):
+        return self.arr.shape
+
+    @property
     def at(self):
         return _AtIndexer(self)
 
@@ -353,7 +357,28 @@ def _source_arrays(nbody=4, ngeom=3, nu=12, ndof=18):
         dof_armature=rng.uniform(0.01, 0.1, size=(ndof,)),
         # geom_quat: identity per geom; the floor-slope dim pitches the floor row.
         geom_quat=np.tile(np.array([1.0, 0.0, 0.0, 0.0]), (ngeom, 1)),
+        # explicit contact pairs (G1-style): pair 0 touches the floor (geom 0), pair 1 not
+        pair_geom1=np.array([0, 1]),
+        pair_geom2=np.array([1, 2]),
+        pair_friction=np.full((2, 5), 0.6),
+        # extended axes: torque limits (both conventions), damping, contact softness
+        actuator_forcerange=np.tile([-20.0, 20.0], (nu, 1)),
+        actuator_trnid=np.stack([np.arange(1, nu + 1), np.zeros(nu, int)], 1),
+        jnt_actfrcrange=np.tile([-40.0, 40.0], (nu + 1, 1)),
+        dof_damping=rng.uniform(0.1, 1.0, size=(ndof,)),
+        geom_solref=np.tile([0.02, 1.0], (ngeom, 1)),
+        pair_solref=np.tile([0.02, 1.0], (2, 1)),
     )
+
+
+_STATIC = ("pair_geom", "actuator_trnid")
+
+
+def _fake_model(src):
+    """``_FakeArr`` fields for build_legged_fields; pair geom ids stay plain int arrays
+    (they are static numpy arrays on a real MJX model too)."""
+    return types.SimpleNamespace(**{k: (v if k.startswith(_STATIC) else _FakeArr(v))
+                                    for k, v in src.items()})
 
 
 def _scalars():
@@ -374,7 +399,7 @@ def test_cbackend_numpy_field_application_matches_build_legged_fields():
     s = _scalars()
 
     # MJX path: build_legged_fields on a _FakeArr model -> dict of new _FakeArr.
-    fake = types.SimpleNamespace(**{k: _FakeArr(v) for k, v in src.items()})
+    fake = _fake_model(src)
     expected = build_legged_fields(s, fake, consts)
 
     # C-MuJoCo path: apply_legged_theta_numpy mutating a plain-numpy model in place.
@@ -386,6 +411,23 @@ def test_cbackend_numpy_field_application_matches_build_legged_fields():
             getattr(numpy_model, f), expected[f].arr,
             err_msg=f"C-backend numpy field {f!r} diverged from build_legged_fields",
         )
+
+
+def test_cbackend_numpy_mirror_matches_on_the_extended_axes():
+    """Same equality with every extended model axis declared (weak motor included)."""
+    src = _source_arrays()
+    consts = (0, 1)
+    s = {**_scalars(), "motor_strength_scale": 0.7, "fault_motor_frac": 0.4,
+         "fault_strength": 0.3, "joint_damping_scale": 2.0,
+         "floor_solref_timeconst": 0.06, "floor_solref_dampratio": 0.5}
+    expected = build_legged_fields(s, _fake_model(src), consts)
+    numpy_model = types.SimpleNamespace(**{k: v.copy() for k, v in src.items()})
+    apply_legged_theta_numpy(numpy_model, s, consts)
+    for f in expected:
+        np.testing.assert_allclose(getattr(numpy_model, f), expected[f].arr,
+                                   err_msg=f"extended field {f!r} diverged")
+    assert not np.allclose(numpy_model.actuator_forcerange, src["actuator_forcerange"])
+    assert numpy_model.geom_solref[0, 0] == 0.06
 
 
 def test_cbackend_numpy_field_application_only_touches_expected_entries():
@@ -407,6 +449,10 @@ def test_cbackend_numpy_field_application_only_touches_expected_entries():
     np.testing.assert_allclose(numpy_model.body_mass[2:], src["body_mass"][2:])
     # geom_quat: only the floor row (index 0) is tilted; other geoms stay identity.
     np.testing.assert_allclose(numpy_model.geom_quat[1:], src["geom_quat"][1:])
+    # pair_friction: only the floor pair's two tangential coefficients changed.
+    np.testing.assert_allclose(numpy_model.pair_friction[0, :2], [s["friction_floor"]] * 2)
+    np.testing.assert_allclose(numpy_model.pair_friction[0, 2:], src["pair_friction"][0, 2:])
+    np.testing.assert_allclose(numpy_model.pair_friction[1], src["pair_friction"][1])
 
 
 def test_floor_slope_produces_intended_pitch_quaternion():
@@ -440,3 +486,60 @@ def test_floor_slope_zero_is_identity_noop():
     src = _source_arrays()
     apply_legged_theta_numpy(numpy_model, {**_scalars(), "floor_slope_rad": 0.0}, (0, 1))
     np.testing.assert_allclose(numpy_model.geom_quat, src["geom_quat"], atol=1e-12)
+
+
+# --------------------------------------------------------------------------- #
+# Timestep configs keep the control period fixed; contact softness reaches pairs
+# --------------------------------------------------------------------------- #
+class _TimedEnv:
+    def __init__(self, ctrl_dt=0.02, sim_dt=0.004):
+        self._ctrl_dt, self._sim_dt = ctrl_dt, sim_dt
+
+    @property
+    def dt(self):
+        return self._ctrl_dt
+
+    @property
+    def n_substeps(self):
+        return int(round(self.dt / self._sim_dt))
+
+
+def test_timestep_config_scales_substeps_not_the_control_period():
+    from breakpoint_mjx.crossval import PhysicsConfig, env_for_physics_config
+
+    env = _TimedEnv()
+    fine = env_for_physics_config(env, PhysicsConfig("fine", timestep_scale=0.5))
+    assert fine is not env and fine.dt == env.dt          # same control period
+    assert fine.n_substeps == 2 * env.n_substeps          # twice the physics steps
+    assert env.n_substeps == 5                            # the original is untouched
+    assert env_for_physics_config(env, PhysicsConfig("soft", solref_scale=2.0)) is env
+
+
+def test_timestep_config_that_cannot_divide_the_control_period_is_refused():
+    from breakpoint_mjx.crossval import PhysicsConfig, env_for_physics_config
+
+    with pytest.raises(ValueError, match="whole number of substeps"):
+        env_for_physics_config(_TimedEnv(), PhysicsConfig("coarse", timestep_scale=2.0))
+
+
+def test_contact_softness_also_scales_explicit_pair_solref():
+    """G1's floor contacts are explicit pairs with their own solref; scaling geom_solref
+    alone left soft/stiff contacts a no-op there."""
+    pytest.importorskip("jax")
+    from breakpoint_mjx.crossval import PhysicsConfig, apply_physics_config
+
+    class _M:
+        def __init__(self, geom_solref, pair_solref):
+            self.geom_solref, self.pair_solref = geom_solref, pair_solref
+
+        def tree_replace(self, upd):
+            d = {"geom_solref": self.geom_solref, "pair_solref": self.pair_solref, **upd}
+            return _M(d["geom_solref"], d["pair_solref"])
+
+    import jax.numpy as jnp
+
+    m = _M(jnp.full((3, 2), 0.02), jnp.full((2, 2), 0.02))
+    out = apply_physics_config(m, PhysicsConfig("soft", solref_scale=2.0))
+    assert jnp.allclose(out.geom_solref[:, 0], 0.04)
+    assert jnp.allclose(out.pair_solref[:, 0], 0.04)
+    assert jnp.allclose(out.pair_solref[:, 1], 0.02)      # damping ratio untouched

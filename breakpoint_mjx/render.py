@@ -28,35 +28,9 @@ import numpy as np
 
 from breakpoint_mjx.thetas import apply_thetas
 from breakpoint_mjx.rollout import rollout_one
-
-
-def fall_step(summary, thresholds):
-    """First step at which the legged fall criterion holds, else None. Pure numpy.
-
-    Same criterion as ``failure.component_signals``: the fall-height channel
-    (``floor_height`` when present, else ``trunk_height``) below ``trunk_height_min`` OR
-    ``up_proj`` below ``up_proj_min`` OR a non-finite value."""
-    if not summary or "up_proj" not in summary:
-        return None
-    h = np.asarray(summary["floor_height"] if "floor_height" in summary
-                   else summary.get("trunk_height"), dtype=float)
-    up = np.asarray(summary["up_proj"], dtype=float)
-    bad = ~np.isfinite(h) | ~np.isfinite(up)
-    fallen = bad | (np.nan_to_num(h, nan=-1.0) < float(thresholds["trunk_height_min"])) | (
-        np.nan_to_num(up, nan=-1.0) < float(thresholds["up_proj_min"]))
-    return int(np.argmax(fallen)) if bool(fallen.any()) else None
-
-
-def min_floor_height(summary):
-    """Lowest torso height above the floor plane over a rollout (None if not recorded)."""
-    if not summary:
-        return None
-    key = "floor_height" if "floor_height" in summary else "trunk_height"
-    if key not in summary:
-        return None
-    v = np.asarray(summary[key], dtype=float)
-    v = v[np.isfinite(v)]
-    return float(v.min()) if v.size else None
+# Pure-numpy fall helpers live in failure.py (jax-free, so the C-engine replay and its
+# tests import them without jax); re-exported here for existing callers.
+from breakpoint_mjx.failure import fall_step, min_floor_height  # noqa: F401
 
 
 def clip_len(n_steps, fall, dt, after_s=1.0):

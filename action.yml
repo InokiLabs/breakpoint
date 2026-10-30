@@ -40,9 +40,13 @@ inputs:
     required: false
     default: "0.05"
   escalate-to:
-    description: "Fresh seeds for cells that got worse but not significantly (empty = 32 for standard, 0 for smoke)."
+    description: "Fresh seeds for cells that got worse but not significantly (empty = 32 for standard, 16 for smoke; 0 = off)."
     required: false
     default: ""
+  fail-on-degradation:
+    description: "'true' to also fail the build when the candidate tracks its command significantly worse on seeds where neither checkpoint fell (alpha is then split with the fall tests)."
+    required: false
+    default: "false"
   python-version:
     description: "Python version to install the engine under (>= 3.11)."
     required: false
@@ -114,6 +118,7 @@ runs:
         BP_DECISION: ${{ inputs.decision }}
         BP_ALPHA: ${{ inputs.alpha }}
         BP_ESCALATE: ${{ inputs.escalate-to }}
+        BP_FAIL_DEGRADATION: ${{ inputs.fail-on-degradation }}
         BP_GATE_OUT: ${{ inputs.out }}
         BREAKPOINT_API_KEY: ${{ inputs.api-key }}
         BREAKPOINT_PROJECT: ${{ inputs.project }}
@@ -122,6 +127,7 @@ runs:
         extra=()
         if [ -n "$BP_BATTERY" ]; then extra+=(--battery "$BP_BATTERY"); fi
         if [ -n "$BP_ESCALATE" ]; then extra+=(--escalate-to "$BP_ESCALATE"); fi
+        if [ "$BP_FAIL_DEGRADATION" = "true" ]; then extra+=(--fail-on-degradation); fi
         breakpoint gate \
           --robot "$BP_ROBOT" \
           --baseline "$BP_BASELINE" \

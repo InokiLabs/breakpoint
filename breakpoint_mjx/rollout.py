@@ -5,9 +5,8 @@ rendered failure reproduces the scored failure bit-for-bit: same physics, same
 per-step key split, same latency buffer, same summary. The renderer can no longer
 drift from the evaluator because there is exactly one step loop.
 
-Executed on Colab; a CPU-only box can't import jax, so this module is validated by
-careful reading + the GPU smoke tests (a later task asserts the determinism
-invariant below).
+Runs on CPU jax as well as GPU; tests/test_gpu_smoke.py asserts the determinism
+invariant below on a real simulator.
 """
 from __future__ import annotations
 
@@ -16,6 +15,12 @@ import jax.numpy as jnp
 
 # Maximum supported latency buffer depth in steps (buffer size = LMAX + 1).
 LMAX = 4
+
+# The per-step observation adversary rule (sensor channels only, sample-and-hold
+# dropout) is pure array code shared with the C MuJoCo / Genesis re-sims.
+from breakpoint_mjx.obs_adversary import (  # noqa: E402,F401
+    OBS_PERTURBATION_MODEL, obs_sensor_mask, perturb_obs, set_obs_non_sensor,
+)
 
 
 def env_key(batch_key, i):
@@ -43,6 +48,23 @@ def _obs_with_state(obs, new_state):
     """Write ``new_state`` back, mirroring ``_obs_state``: replace ``obs["state"]`` for a
     dict obs (passing every other key through unchanged), or return the array itself."""
     return {**obs, "state": new_state} if isinstance(obs, dict) else new_state
+
+
+def action_correction(env):
+    """The env's learned action correction ``f(obs_state, action) -> delta`` (pure jax),
+    required once a space declares world_model_scale."""
+    fn = getattr(env, "_bp_action_correction", None)
+    if fn is None:
+        raise ValueError("world_model_scale is declared but the env has no "
+                         "_bp_action_correction (load a fitted world model first)")
+    return fn
+
+
+def wind_vector(xp, jax, key, wind_force_n):
+    """The episode's constant base force [N]: horizontal, direction from key child 3."""
+    ang = jax.random.uniform(jax.random.fold_in(key, 3), (), minval=0.0,
+                             maxval=2.0 * xp.pi)
+    return wind_force_n * xp.array([xp.cos(ang), xp.sin(ang), 0.0])
 
 
 def rollout_one(
@@ -79,18 +101,44 @@ def rollout_one(
     rollout_scalars are read by meaning; every dim degrades to a no-op (0.0) when a
     space does not declare it (``.get(name, 0.0)``), so a target without a given
     adversary is unaffected. Recognized ROLLOUT dims (all pure-jax + vmappable):
-      * obs_noise_scale   -- per-step Gaussian noise on obs["state"].
+      * obs_noise_scale   -- per-step Gaussian noise on the sensor channels of obs["state"].
       * latency_steps     -- action ring-buffer delay (0..LMAX).
-      * obs_dropout_prob  -- per-step Bernoulli channel dropout on obs["state"]
-                             (each channel zeroed with prob p; obs-noise key stream).
+      * obs_dropout_prob  -- per-step Bernoulli channel dropout on the sensor channels
+                             (a dropped channel holds its last delivered reading).
       * obs_bias_scale    -- per-EPISODE constant bias added to obs["state"] (sampled
                              once at reset from a key child; models a miscalibrated sensor).
       * push_mag          -- magnitude (m/s) of a gait-timed velocity impulse on the base.
       * push_step_frac    -- WHEN the push lands, as a fraction of the horizon [0,1].
+      * action_noise_scale -- per-step Gaussian noise on the action the actuators get
+                             (after the latency buffer): motor driver / PWM noise.
+      * wind_force_n      -- constant horizontal force [N] on the base for the whole
+                             episode (wind, a dragged cable, a leash); direction sampled
+                             once at reset. Set on xfrc_applied before every step.
+      * world_model_scale -- how much of a learned action correction to apply: the action
+                             the actuators get becomes a + scale * env._bp_action_correction(
+                             obs, a), where obs is the robot's own (unperturbed) reading and
+                             a the action after the latency buffer. A world model fitted to
+                             real-robot logs supplies the correction (it makes the simulator
+                             move like that robot); 0 is the raw simulator. The policy is
+                             untouched: the correction belongs to the environment.
+      * latency_jitter_steps -- extra per-step delay, uniform in 0..round(jitter) on top of
+                             latency_steps (a busy bus or OS scheduler), capped at LMAX.
+      * obs_delay_steps   -- the policy sees the sensor reading from this many steps ago
+                             (sensor / estimator latency, separate from actuation latency).
+      * action_bias_scale -- per-EPISODE constant offset on every motor target (joint zero
+                             calibration error), sampled once from key child 4.
+      * motor_dropout_prob -- per step and motor, the chance a command packet is lost: that
+                             motor keeps its previous target (CAN / EtherCAT drops).
+      * stuck_motor_step_frac / stuck_motor_frac -- from step round(frac * H) on, motor
+                             round(stuck_motor_frac * (A-1)) is stuck at its last target
+                             (seized joint or dead driver); frac 1 = never.
+    The extended axes are no-ops unless declared (python-level check), so a space without
+    them compiles to exactly the previous program.
 
     Step semantics (identical in both paths -- the divergence #6 fixes):
       key, nk_noise, nk_policy = split(key, 3)
-      state = (obs["state"] + obs_noise_scale*normal(nk_noise) + obs_bias) * dropout_mask
+      reading = held if dropped else obs["state"] + obs_noise_scale*normal(nk_noise) + obs_bias
+      (sensor channels only; see perturb_obs), and held = reading
       act = policy_fn({**obs, "state": state}, nk_policy)
       latency ring buffer: newest at index 0, delayed = buf[lat]
       at step==round(push_step_frac*(H-1)): base qvel[:3] += push_mag * dir (key-sampled)
@@ -102,9 +150,8 @@ def rollout_one(
     stateful is a trace-time Python check: a stateless policy compiles to exactly the
     previous program.
 
-    Nominal-safe: with every new adversary at its nominal 0 the rollout is
-    byte-identical to the pre-adversary path (dropout mask is all-ones, bias/push are 0),
-    so eval_nominal and existing behavior do not shift.
+    Nominal-safe: with every adversary at its nominal 0 the policy sees the clean obs
+    exactly (nothing is dropped, bias/push are 0), so eval_nominal does not shift.
 
     Returns
     -------
@@ -149,33 +196,92 @@ def rollout_one(
     push_step = jnp.clip(
         jnp.round(push_step_frac * (horizon - 1)).astype(jnp.int32), 0, horizon - 1
     )
+    has_act_noise = "action_noise_scale" in rollout_scalars
+    act_noise_scale = rollout_scalars.get("action_noise_scale", 0.0)
+    has_wind = "wind_force_n" in rollout_scalars
+    wind_vec = wind_vector(jnp, jax, key, rollout_scalars.get("wind_force_n", 0.0))
+    base_body = model.jnt_bodyid[0]
+    has_wm = "world_model_scale" in rollout_scalars
+    wm_scale = rollout_scalars.get("world_model_scale", 0.0)
+    correction = action_correction(env) if has_wm else None
+    has_jitter = "latency_jitter_steps" in rollout_scalars
+    jitter = jnp.round(rollout_scalars.get("latency_jitter_steps", 0.0))
+    has_odelay = "obs_delay_steps" in rollout_scalars
+    odelay = jnp.clip(jnp.round(rollout_scalars.get("obs_delay_steps", 0.0)).astype(jnp.int32),
+                      0, LMAX)
+    has_abias = "action_bias_scale" in rollout_scalars
+    act_bias = rollout_scalars.get("action_bias_scale", 0.0) * jax.random.normal(
+        jax.random.fold_in(key, 4), (A,))
+    has_mdrop = "motor_dropout_prob" in rollout_scalars
+    mdrop = rollout_scalars.get("motor_dropout_prob", 0.0)
+    has_stuck = "stuck_motor_step_frac" in rollout_scalars
+    stuck_step = jnp.round(rollout_scalars.get("stuck_motor_step_frac", 1.0) * horizon
+                           ).astype(jnp.int32)
+    stuck_idx = jnp.round(rollout_scalars.get("stuck_motor_frac", 0.0) * (A - 1))
 
+    sensor_mask = obs_sensor_mask(env, state_shape[-1])
+    if sensor_mask is not None:
+        sensor_mask = jnp.asarray(sensor_mask)
+    # The reset reading: clean reset obs plus the episode's sensor bias (no per-step noise
+    # or dropout is drawn for it: those keys belong to step 0). It seeds the stateful
+    # policy's carry and is what a channel dropped at step 0 holds.
+    clean0 = _obs_state(st0.obs)
+    held0 = perturb_obs(jnp, clean0, 0.0, obs_bias, jnp.zeros(state_shape, bool),
+                        clean0, sensor_mask)[0]
     stateful = callable(getattr(policy_fn, "init_carry", None))
-    # The carry starts from the clean reset obs plus the episode's sensor bias (no
-    # per-step noise or dropout is drawn for it: those keys belong to step 0).
-    pcarry0 = (policy_fn.init_carry(_obs_with_state(st0.obs, _obs_state(st0.obs) + obs_bias))
-               if stateful else None)
+    pcarry0 = (policy_fn.init_carry(_obs_with_state(st0.obs, held0)) if stateful else None)
+    # extra carry, only for the axes that need memory (empty otherwise: same program)
+    ext0 = {}
+    if has_odelay:
+        ext0["obuf"] = jnp.repeat(held0[None], LMAX + 1, axis=0)
+    if has_mdrop or has_stuck:
+        ext0["prev"] = jnp.zeros(A)
 
     def body(carry, step_idx):
-        st, buf, key, pcarry = carry
+        st, buf, key, pcarry, held, ext = carry
+        ext = dict(ext)
         key, nk_noise, nk_policy = jax.random.split(key, 3)
         # Observation adversaries all draw from the obs-noise key stream (nk_noise) so
-        # they stay deterministic + vmappable. Gaussian noise uses nk_noise directly (so
-        # obs_noise-only behavior is unchanged vs. before); dropout uses a folded child.
+        # they stay deterministic + vmappable. Gaussian noise uses nk_noise directly;
+        # dropout uses a folded child.
         state = _obs_state(st.obs)
         gauss = obs_noise_scale * jax.random.normal(nk_noise, state.shape)
-        keep = (
-            jax.random.uniform(jax.random.fold_in(nk_noise, 1), state.shape)
-            >= obs_dropout_prob
-        ).astype(state.dtype)
-        # Dropout zeros channels LAST, so a dropped channel reads exactly 0 (not noise).
-        obs = _obs_with_state(st.obs, (state + gauss + obs_bias) * keep)
+        dropped = (jax.random.uniform(jax.random.fold_in(nk_noise, 1), state.shape)
+                   < obs_dropout_prob)
+        reading, held = perturb_obs(jnp, state, gauss, obs_bias, dropped, held, sensor_mask)
+        if has_odelay:
+            ext["obuf"] = jnp.concatenate([reading[None], ext["obuf"][:-1]], axis=0)
+            reading = ext["obuf"][odelay]
+        obs = _obs_with_state(st.obs, reading)
         if stateful:
             act, pcarry = policy_fn(obs, nk_policy, pcarry)
         else:
             act, _ = policy_fn(obs, nk_policy)
         buf = jnp.concatenate([act[None], buf[:-1]], axis=0)  # newest at index 0
         delayed = buf[lat]                                     # lat=0 => no delay
+        if has_jitter:
+            extra = jnp.floor(jax.random.uniform(jax.random.fold_in(nk_noise, 3))
+                              * (jitter + 1)).astype(jnp.int32)
+            delayed = buf[jnp.clip(lat + extra, 0, LMAX)]
+        if has_wm:
+            delayed = delayed + wm_scale * correction(state, delayed)
+        if has_abias:
+            delayed = delayed + act_bias
+        if has_act_noise:
+            delayed = delayed + act_noise_scale * jax.random.normal(
+                jax.random.fold_in(nk_noise, 2), delayed.shape)
+        if has_mdrop or has_stuck:
+            hold = jnp.zeros(A, bool)
+            if has_mdrop:
+                hold = hold | (jax.random.uniform(jax.random.fold_in(nk_noise, 4), (A,))
+                               < mdrop)
+            if has_stuck:
+                hold = hold | ((jnp.arange(A) == stuck_idx) & (step_idx >= stuck_step))
+            delayed = jnp.where(hold, ext["prev"], delayed)
+            ext["prev"] = delayed
+        if has_wind:
+            st = st.replace(data=st.data.replace(
+                xfrc_applied=st.data.xfrc_applied.at[base_body, :3].set(wind_vec)))
         # Apply the gait-timed push to the base linear velocity at the chosen step, BEFORE
         # stepping, so the impulse is integrated this step. do_push is 0/1 (no branching).
         do_push = (step_idx == push_step).astype(st.data.qvel.dtype)
@@ -211,12 +317,12 @@ def rollout_one(
             # Trace-time bool like collect_states, so eval throughput is untouched.
             summary = {**summary, "obs_state": _obs_state(obs), "action": act}
         out = (summary, st) if collect_states else summary
-        return (st, buf, key, pcarry), out
+        return (st, buf, key, pcarry, held, ext), out
 
     # xs = arange(H) so `body` gets the step index (drives the gait-timed push); this is
     # also the scan length. With push_mag=0 the step index is unused, so nominal is a no-op.
-    (_, _, _, _), scanned = jax.lax.scan(body, (st0, buf0, key, pcarry0),
-                                         jnp.arange(horizon))
+    _, scanned = jax.lax.scan(body, (st0, buf0, key, pcarry0, held0, ext0),
+                              jnp.arange(horizon))
 
     if collect_states:
         traj, stacked = scanned

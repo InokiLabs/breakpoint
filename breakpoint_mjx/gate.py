@@ -58,6 +58,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from breakpoint_mjx import gate_stats, ratings
+from breakpoint_mjx.obs_adversary import OBS_PERTURBATION_MODEL
 
 SCHEMA = ratings.SCHEMA
 GATE_FAILED_MSG = "CI GATE FAILED (regression detected)"
@@ -75,7 +76,10 @@ BUDGETS = {
 # Escalation seeds are outside every battery's seed list, so stage 2 never re-uses a world
 # stage 1 saw; seed i of an escalation is ESCALATION_SEED_BASE + i (deterministic).
 ESCALATION_SEED_BASE = 10_000
-DEFAULT_ESCALATE_TO = {"standard": 32, "smoke": 0}
+# Smoke escalates too: with its 4 seeds a single cell can never reach significance on
+# stage 1 alone (best one-sided p is 1/16 before Holm), so without escalation a
+# regression confined to one cell could not fail the build at all.
+DEFAULT_ESCALATE_TO = {"standard": 32, "smoke": 16}
 
 ADAPTER_OPTS = ("obs_norm", "action_scale", "squash", "activation", "mean_dim", "obs_spec")
 
@@ -116,8 +120,16 @@ def battery_cells(bat) -> list:
 # --------------------------------------------------------------------------------------
 
 def cell_result(cell_id, outcome, n: int, pass_num: int, pass_den: int) -> dict:
-    """One contract cell row. ``outcome`` is the fall count (int) or the per-seed 0/1 list;
-    the list is kept (as ``outcomes``) so the verdict can use the seed pairing."""
+    """One contract cell row. ``outcome`` is the fall count (int), the per-seed 0/1 list,
+    or ``{"outcomes": [0/1 per seed], "tracking_error": [float per seed]}``; the lists are
+    kept so the verdict can use the seed pairing (and the degradation test the errors)."""
+    tracking = None
+    if isinstance(outcome, dict):
+        tracking = outcome.get("tracking_error")
+        outcome = outcome["outcomes"]
+        if tracking is not None and len(tracking) != len(outcome):
+            raise ValueError(f"cell {cell_id!r}: {len(tracking)} tracking errors for "
+                             f"{len(outcome)} seeds")
     if isinstance(outcome, (list, tuple)):
         outcomes = [int(bool(x)) for x in outcome]
         if len(outcomes) != n:
@@ -135,7 +147,21 @@ def cell_result(cell_id, outcome, n: int, pass_num: int, pass_den: int) -> dict:
            "passed": ratings.cell_passed(falls, n, pass_num, pass_den)}
     if outcomes is not None:
         row["outcomes"] = outcomes
+    if tracking is not None:
+        row["tracking_error"] = [float(x) for x in tracking]
     return row
+
+
+def degradation_pairs(pairs) -> list:
+    """(baseline, candidate) tracking errors for every (cell, seed) where neither fell."""
+    out = []
+    for _cid, b, c in pairs:
+        bo, co = b.get("outcomes"), c.get("outcomes")
+        bt, ct = b.get("tracking_error"), c.get("tracking_error")
+        if None in (bo, co, bt, ct) or len(bo) != len(co):
+            continue
+        out += [(bt[i], ct[i]) for i in range(len(bo)) if not bo[i] and not co[i]]
+    return out
 
 
 def _rule_status(bc, c, delta, tolerance) -> str:
@@ -150,7 +176,8 @@ def _rule_status(bc, c, delta, tolerance) -> str:
 
 def compare_cells(baseline: list, candidate: list, tolerance: float = 0.0,
                   decision: str = "stat", alpha: float = gate_stats.DEFAULT_ALPHA,
-                  run_stage2=None) -> dict:
+                  run_stage2=None, degradation_margin=None, degradation_alpha=None,
+                  fail_on_degradation: bool = False) -> dict:
     """Compare the two runs cell by cell and decide the gate.
 
     Every row carries both the statistical result (discordant counts, p, Holm p) and the
@@ -160,7 +187,11 @@ def compare_cells(baseline: list, candidate: list, tolerance: float = 0.0,
 
     ``run_stage2(cell_ids) -> pairs`` turns on escalation (``--decision stat`` only): the
     suspect cells are re-run on fresh seeds and decided again, each stage at alpha/2
-    (gate_stats.two_stage)."""
+    (gate_stats.two_stage).
+
+    ``degradation_margin`` (not None) adds the paired tracking-error test over seeds where
+    neither fell, at ``degradation_alpha``. It is advisory unless ``fail_on_degradation``;
+    the caller then splits alpha between it and the fall tests."""
     if decision not in DECISIONS:
         raise ValueError(f"decision must be one of {DECISIONS}")
     if tolerance < 0:
@@ -219,9 +250,20 @@ def compare_cells(baseline: list, candidate: list, tolerance: float = 0.0,
         regressed = two["regressed"] if two else stat["regressed"]
     else:
         regressed = bool(new_failing)
+    degradation = None
+    if degradation_margin is not None:
+        dp = degradation_pairs(pairs)
+        if dp:
+            degradation = gate_stats.degradation_test(
+                dp, margin=degradation_margin,
+                alpha=alpha if degradation_alpha is None else degradation_alpha)
+            degradation["fails_build"] = bool(fail_on_degradation)
+            if fail_on_degradation and degradation["significant"]:
+                regressed = True
     return {"rows": rows, "new_failing_cells": new_failing, "warnings": warnings,
             "regressed": bool(regressed), "decision": decision, "stat": stat,
-            "alpha": alpha, "stage2": stage2, "escalated": two["escalated"] if two else []}
+            "alpha": alpha, "stage2": stage2, "escalated": two["escalated"] if two else [],
+            "degradation": degradation}
 
 
 def summary_block(cells: list, budget: str, seeds, horizon) -> dict:
@@ -236,7 +278,13 @@ def tolerance_label(tolerance: float) -> str:
 
 
 def _public_cell(c: dict) -> dict:
-    return {k: v for k, v in c.items() if k != "outcomes"}
+    return {k: v for k, v in c.items() if k not in ("outcomes", "tracking_error")}
+
+
+def _degradation_block(deg):
+    if deg is None:
+        return None
+    return {k: (round(v, 6) if isinstance(v, float) else v) for k, v in deg.items()}
 
 
 def _escalation_block(comparison, escalation_seeds):
@@ -263,7 +311,8 @@ def build_report(*, robot, bat, policy_name, policy_sha256, baseline_sha256,
         "schema": SCHEMA,
         "kind": "gate",
         "battery": {"id": bat.id, "sha256": bat.sha256},
-        "engine": {"version": engine_version, "commit": commit},
+        "engine": {"version": engine_version, "commit": commit,
+                   "obs_model": OBS_PERTURBATION_MODEL},
         "robot": robot,
         "policy": {"name": policy_name, "source": source, "sha256": policy_sha256},
         "run": {"date": date or datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -290,6 +339,7 @@ def build_report(*, robot, bat, policy_name, policy_sha256, baseline_sha256,
             "min_detectable": {"per_cell": st["min_up_per_cell"],
                                "pooled": st["min_up_pooled"]},
             "escalation": _escalation_block(comparison, escalation_seeds),
+            "degradation": _degradation_block(comparison.get("degradation")),
         },
         "attestation": None,
     }
@@ -312,10 +362,14 @@ def to_markdown(report: dict, comparison: dict, *, baseline_name: str, notes=())
     g, run = report["gate"], report["run"]
     verdict = "FAILED: regression detected" if g["regressed"] else "PASSED"
     lines = [f"## BreakPoint gate: {verdict}", ""]
-    if g["regressed"]:
+    deg = g.get("degradation")
+    if g["regressed"] and g["new_failing_cells"]:
         lines.append(f"The candidate falls more than the baseline in "
                      f"{len(g['new_failing_cells'])} condition(s): "
                      + ", ".join(f"`{c}`" for c in g["new_failing_cells"]) + ".")
+    elif g["regressed"]:
+        lines.append("The candidate does not fall more, but it tracks its command "
+                     "significantly worse on seeds where neither checkpoint fell.")
     elif comparison["warnings"]:
         lines.append("No significant regression, but the candidate fell more often in "
                      + ", ".join(f"`{c}`" for c in comparison["warnings"])
@@ -345,6 +399,14 @@ def to_markdown(report: dict, comparison: dict, *, baseline_name: str, notes=())
         pool = (f"the battery does at {md['pooled']} net seed-pairs" if md["pooled"]
                 else "nor can the battery")
         lines.append(f"- sensitivity: {per}; {pool}")
+    if deg:
+        med = ("-" if deg["median_ratio"] is None else f"x{deg['median_ratio']:.2f}")
+        verdict_d = ("significant" if deg["significant"] else "not significant")
+        role = "fails the build" if deg["fails_build"] else "advisory"
+        lines.append(f"- tracking ({role}): over {deg['n_pairs']} seed-pairs where neither "
+                     f"fell, the candidate tracked worse by >{deg['margin']:.0%} in "
+                     f"{deg['up']}, better in {deg['down']} (median error {med}, "
+                     f"p = {_fmt_p(deg['p'])}, {verdict_d})")
     esc = g["escalation"]
     if esc["cells"]:
         lines.append(f"- escalated: {', '.join(f'`{c}`' for c in esc['cells'])} re-run on "
@@ -421,7 +483,7 @@ def maybe_upload(report: dict, environ=None, opener=None, log=None) -> str:
 
 def make_sim_evaluator(robot: str, bat, opts=None, log=print):
     """Return (evaluate_fn, backend). ``evaluate_fn(spec, cells, seeds, horizon)`` returns
-    {cell_id: [0/1 per seed]}. It is the ratings runner (same thresholds from the
+    {cell_id: {"outcomes": [0/1 per seed], "tracking_error": [per seed]}}. It is the ratings runner (same thresholds from the
     battery's fall_rule, same theta validation, a sim_invalid rollout counted as a fall),
     so a gate and a rating of the same checkpoint agree cell for cell."""
     from breakpoint_mjx.config import (load_search_config, load_theta_space,
@@ -458,13 +520,15 @@ def make_sim_evaluator(robot: str, bat, opts=None, log=print):
             f"(first call compiles, ~1-3 min on CPU) ...")
         run = ratings.make_runner(target, env, policy_fn, space, int(horizon), thresholds)
         want = {c["id"] for c in cells}
-        out = {cid: [] for cid in battery_ids if cid in want}
+        out = {cid: {"outcomes": [], "tracking_error": []}
+               for cid in battery_ids if cid in want}
         for s in seeds:
             sigs = run(thetas, int(s))
             for cid, sig in zip(battery_ids, sigs):
                 if cid in want:
-                    out[cid].append(int(bool(float(sig.get("fall", 0.0))
-                                             or float(sig.get("sim_invalid", 0.0)))))
+                    out[cid]["outcomes"].append(int(bool(float(sig.get("fall", 0.0))
+                                                         or float(sig.get("sim_invalid", 0.0)))))
+                    out[cid]["tracking_error"].append(float(sig.get("tracking_error", 0.0)))
         return out
 
     return evaluate_fn, backend
@@ -477,10 +541,17 @@ def make_sim_evaluator(robot: str, bat, opts=None, log=print):
 def run_gate(*, robot, baseline, candidate, battery=None, budget="standard",
              tolerance=0.0, decision="stat", alpha=gate_stats.DEFAULT_ALPHA,
              escalate_to=None, evaluate_fn=None, backend=None, opts=None,
-             candidate_name=None, baseline_name=None, log=print):
+             candidate_name=None, baseline_name=None, log=print,
+             degradation_margin=gate_stats.DEFAULT_DEGRADATION_MARGIN,
+             fail_on_degradation=False):
     """Evaluate both checkpoints on the same cells/seeds; return (report, comparison,
     markdown). ``evaluate_fn(spec, cells, seeds, horizon) -> {cell_id: falls | [0/1]}``
-    is injected in tests; the default builds the simulator evaluator."""
+    is injected in tests; the default builds the simulator evaluator.
+
+    ``fail_on_degradation`` lets a significant tracking-error degradation fail the build;
+    alpha is then split in half between it and the fall tests, so false alarms stay at or
+    below ``alpha`` overall. Off, the tracking test is reported at full alpha as advisory.
+    ``degradation_margin=None`` turns the tracking test off."""
     from breakpoint_mjx import __version__
 
     if tolerance < 0:
@@ -495,6 +566,10 @@ def run_gate(*, robot, baseline, candidate, battery=None, budget="standard",
         escalate_to = DEFAULT_ESCALATE_TO[budget]
     if escalate_to < 0:
         raise ValueError("--escalate-to must be >= 0")
+    if fail_on_degradation and degradation_margin is None:
+        raise ValueError("--fail-on-degradation needs the tracking test (a margin)")
+    fall_alpha = alpha / 2.0 if fail_on_degradation else alpha
+    deg_alpha = alpha / 2.0 if fail_on_degradation else alpha
     for label, spec in (("baseline", baseline), ("candidate", candidate)):
         if not ratings.policy_file(spec).is_file():
             raise FileNotFoundError(f"{label} checkpoint not found: "
@@ -530,8 +605,13 @@ def run_gate(*, robot, baseline, candidate, battery=None, budget="standard",
     base_cells = run_one(baseline)
     cand_cells = run_one(candidate)
     comparison = compare_cells(
-        base_cells, cand_cells, tolerance, decision, alpha,
-        run_stage2=run_stage2 if (decision == "stat" and esc_seeds) else None)
+        base_cells, cand_cells, tolerance, decision, fall_alpha,
+        run_stage2=run_stage2 if (decision == "stat" and esc_seeds) else None,
+        degradation_margin=degradation_margin, degradation_alpha=deg_alpha,
+        fail_on_degradation=fail_on_degradation)
+    if fail_on_degradation:
+        notes.append(f"alpha {alpha:g} is split: {fall_alpha:g} for the fall tests, "
+                     f"{deg_alpha:g} for the tracking test")
     b_nom = next((c for c in base_cells if c["id"] == "nominal"), None)
     if b_nom is not None and not b_nom["passed"]:
         notes.append("the BASELINE fails the nominal cell; check it with "
@@ -582,8 +662,17 @@ def add_args(ap):
                     help="false-alarm budget for --decision stat (default 0.05)")
     ap.add_argument("--escalate-to", type=int, default=None,
                     help="re-run cells where the candidate fell more, but not significantly, "
-                         "on this many fresh seeds (default: 32 for standard, 0 = off for "
-                         "smoke). Costs only the suspect cells; false alarms stay <= --alpha")
+                         "on this many fresh seeds (default: 32 for standard, 16 for "
+                         "smoke; 0 = off). Costs only the suspect cells; false alarms stay "
+                         "<= --alpha")
+    ap.add_argument("--degradation-margin", type=float,
+                    default=gate_stats.DEFAULT_DEGRADATION_MARGIN,
+                    help="tracking-error deadband for the paired degradation test over "
+                         "seeds where neither checkpoint fell (default 0.10 = 10%%; "
+                         "negative = off)")
+    ap.add_argument("--fail-on-degradation", action="store_true",
+                    help="fail the build when the candidate tracks its command "
+                         "significantly worse (alpha is then split with the fall tests)")
     ap.add_argument("--tolerance", type=float, default=0.0,
                     help="fall-rate margin: an increase at or below this never fails "
                          "the build, however significant")
@@ -612,6 +701,10 @@ def _adapter_opts(args) -> dict:
     return opts
 
 
+def _margin(m):
+    return None if m is None or m < 0 else float(m)
+
+
 def gate(args, evaluate_fn=None, backend=None, environ=None, opener=None) -> int:
     try:
         report, comparison, md = run_gate(
@@ -621,7 +714,10 @@ def gate(args, evaluate_fn=None, backend=None, environ=None, opener=None) -> int
             alpha=getattr(args, "alpha", gate_stats.DEFAULT_ALPHA),
             escalate_to=getattr(args, "escalate_to", None),
             evaluate_fn=evaluate_fn, backend=backend, opts=_adapter_opts(args),
-            candidate_name=args.candidate_name, baseline_name=args.baseline_name)
+            candidate_name=args.candidate_name, baseline_name=args.baseline_name,
+            degradation_margin=_margin(getattr(args, "degradation_margin",
+                                               gate_stats.DEFAULT_DEGRADATION_MARGIN)),
+            fail_on_degradation=bool(getattr(args, "fail_on_degradation", False)))
     except (FileNotFoundError, ValueError, KeyError) as e:   # BatteryError is a ValueError
         print(f"gate: error: {e.args[0] if e.args else e}", file=sys.stderr)
         return 2
@@ -658,6 +754,10 @@ def gate(args, evaluate_fn=None, backend=None, environ=None, opener=None) -> int
             if r["id"] in report["gate"]["new_failing_cells"]:
                 print(f"  - cell {r['id']}: {r['baseline']['falls']}/{r['baseline']['n']} "
                       f"-> {r['candidate']['falls']}/{r['candidate']['n']} falls")
+        deg = report["gate"].get("degradation")
+        if deg and deg["fails_build"] and deg["significant"]:
+            print(f"  - tracking: worse in {deg['up']} of {deg['n_pairs']} seed-pairs "
+                  f"where neither fell, better in {deg['down']} (p = {_fmt_p(deg['p'])})")
         return 1
     print("\nCI gate passed: no evidence the candidate falls more than the baseline.")
     return 0

@@ -25,6 +25,7 @@ from breakpoint_mjx.targets import Target
 from breakpoint_mjx.targets._legged import (
     LEGGED_MODEL_FIELDS,
     build_legged_fields,
+    eval_config_overrides,
     validate_legged_model,
 )
 
@@ -82,8 +83,12 @@ def resolve_constants_from_candidates(env, floor_candidates, base_candidates):
 def make_legged_target(name, env_name, *, floor_candidates=DEFAULT_FLOOR_CANDIDATES,
                        base_candidates=DEFAULT_BASE_CANDIDATES, thresholds=None,
                        theta_space_path=DEFAULT_THETA_SPACE, checkpoint_name=None,
-                       impl="jax") -> Target:
+                       impl="jax", obs_non_sensor=None) -> Target:
     """Build a legged Target from names alone (see module docstring).
+
+    ``obs_non_sensor`` is an optional ``env -> (slices, frame)`` naming the obs channels
+    that are not sensor readings (command, last action, phase); see
+    ``rollout.set_obs_non_sensor``. Without it every obs channel stays perturbable.
 
     ``thresholds`` should at minimum set ``trunk_height_min`` to ~half the robot's
     standing base height (the go1-scale default of 0.18 m under-triggers on anything
@@ -95,7 +100,13 @@ def make_legged_target(name, env_name, *, floor_candidates=DEFAULT_FLOOR_CANDIDA
     def load_env():
         from mujoco_playground import registry
 
-        return registry.load(env_name, config_overrides={"impl": impl})
+        from breakpoint_mjx.obs_adversary import set_obs_non_sensor
+
+        env = registry.load(env_name, config_overrides=eval_config_overrides(env_name, impl))
+        if obs_non_sensor is not None:
+            slices, frame = obs_non_sensor(env)
+            set_obs_non_sensor(env, slices, frame=frame)
+        return env
 
     def resolve_constants(env):
         validate_legged_model(env.mjx_model)

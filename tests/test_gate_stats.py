@@ -181,3 +181,25 @@ def test_two_stage_skips_stage2_when_nothing_is_suspect():
     res = S.two_stage([("a", _cell([0] * 8), _cell([0] * 8))],
                       lambda ids: called.append(ids) or [])
     assert called == [] and res["stage2"] is None and res["regressed"] is False
+
+
+# ------------------------------------------------------------------ degradation_test
+
+def test_degradation_identical_errors_are_never_evidence():
+    from breakpoint_mjx.gate_stats import degradation_test
+    d = degradation_test([(0.2, 0.2)] * 40)
+    assert (d["up"], d["down"], d["p"], d["significant"]) == (0, 0, 1.0, False)
+
+
+def test_degradation_deadband_is_symmetric_in_the_ratio():
+    from breakpoint_mjx.gate_stats import degradation_test
+    # 1.05x worse is inside a 10% deadband; 1.2x worse / 1.2x better both count
+    d = degradation_test([(1.0, 1.05), (1.0, 1.2), (1.2, 1.0)], margin=0.10)
+    assert (d["up"], d["down"]) == (1, 1)
+
+
+def test_degradation_consistently_worse_is_significant():
+    from breakpoint_mjx.gate_stats import degradation_test
+    d = degradation_test([(0.2, 0.3)] * 12 + [(0.3, 0.2)] * 1, alpha=0.05)
+    assert d["up"] == 12 and d["down"] == 1 and d["significant"] is True
+    assert d["median_ratio"] == pytest.approx(1.5)

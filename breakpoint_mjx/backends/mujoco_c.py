@@ -74,6 +74,7 @@ def apply_legged_theta_numpy(model, scalars, consts):
     math is byte-identical to `targets._legged.build_legged_fields`:
 
       geom_friction[floor, 0]  = friction_floor            (SET)
+      pair_friction[floor pairs, :2] = friction_floor      (SET; explicit pairs, e.g. G1)
       body_mass[torso]        += torso_mass_add_kg         (ADD)
       body_ipos[torso, {0,1,2}]+= com_offset_{x,y,z}_m     (ADD, per axis)
       actuator_gainprm[:, 0]  *= kp_scale                  (Kp)
@@ -96,6 +97,12 @@ def apply_legged_theta_numpy(model, scalars, consts):
     floor_geom_id, torso_body_id = consts
 
     model.geom_friction[floor_geom_id, 0] = scalars["friction_floor"]
+    from breakpoint_mjx.targets._legged import floor_pair_ids
+
+    ids = floor_pair_ids(model, floor_geom_id)
+    if len(ids):
+        model.pair_friction[ids, 0] = scalars["friction_floor"]
+        model.pair_friction[ids, 1] = scalars["friction_floor"]
     model.body_mass[torso_body_id] += scalars["torso_mass_add_kg"]
     model.body_ipos[torso_body_id, 0] += scalars["com_offset_x_m"]
     model.body_ipos[torso_body_id, 1] += scalars["com_offset_y_m"]
@@ -114,7 +121,36 @@ def apply_legged_theta_numpy(model, scalars, consts):
     q_pitch = np.array([np.cos(half), 0.0, np.sin(half), 0.0])
     base_q = np.asarray(model.geom_quat[floor_geom_id], dtype=float)
     model.geom_quat[floor_geom_id] = _quat_mul_np(q_pitch, base_q)
+    _apply_extended_numpy(model, scalars, floor_geom_id, ids)
     return model
+
+
+def _apply_extended_numpy(model, scalars, floor_geom_id, pair_ids):
+    """NUMPY mirror of targets._legged._extended_fields (each axis only if declared)."""
+    from breakpoint_mjx.targets._legged import actuator_strength, fault_gain
+
+    nu = model.actuator_gainprm.shape[0]
+    if any(k in scalars for k in ("motor_strength_scale", "fault_motor_frac",
+                                  "fault_strength")):
+        s = np.asarray(actuator_strength(np, scalars, nu), dtype=float)
+        model.actuator_forcerange[:] = model.actuator_forcerange * s[:, None]
+        jr = getattr(model, "jnt_actfrcrange", None)
+        if jr is not None and len(jr):
+            jid = np.asarray(model.actuator_trnid)[:, 0]
+            jr[jid] = jr[jid] * s[:, None]
+        g = fault_gain(np, scalars, nu)
+        if g is not None:
+            model.actuator_gainprm[:, 0] *= g
+            model.actuator_biasprm[:, 1] *= g
+            model.actuator_biasprm[:, 2] *= g
+    if "joint_damping_scale" in scalars:
+        model.dof_damping[6:] *= scalars["joint_damping_scale"]
+    for col, name in ((0, "floor_solref_timeconst"), (1, "floor_solref_dampratio")):
+        if name not in scalars:
+            continue
+        model.geom_solref[floor_geom_id, col] = scalars[name]
+        if len(pair_ids):
+            model.pair_solref[pair_ids, col] = scalars[name]
 
 
 def _model_scalars(space, theta_named):
@@ -431,7 +467,8 @@ class MujocoCBackend:
         Mirrors `rollout_one` step-for-step so `failure_score` is comparable -- the same
         recorded key, the same per-step 3-way split, the same episode-level adversary
         draws (fold_in(key, 1) obs bias, fold_in(key, 2) push direction), the same
-        noise -> bias -> dropout order, the same latency ring buffer (newest at index 0,
+        noise -> bias -> dropout (sample-and-hold) order on the same sensor channels, the same
+        latency ring buffer (newest at index 0,
         delayed = buf[lat]), the same gait-timed push before the step, and the same
         per-target ``summarize`` hook. The ONLY intended difference is the integrator:
         C MuJoCo instead of MJX.
@@ -458,6 +495,7 @@ class MujocoCBackend:
         import mujoco
         from mujoco import mjx
 
+        from breakpoint_mjx.obs_adversary import obs_sensor_mask, perturb_obs
         from breakpoint_mjx.rollout import _obs_state, _obs_with_state
 
         key = self._key(record)  # raises on a legacy record (no exact-repro key)
@@ -500,14 +538,46 @@ class MujocoCBackend:
         push_angle = float(self._uniform(self._fold_in(key, 2), (), 0.0, 2.0 * np.pi))
         push_vec = push_mag * np.array([np.cos(push_angle), np.sin(push_angle), 0.0])
         push_step = int(np.clip(round(push_step_frac * (horizon - 1)), 0, horizon - 1))
+        has_act_noise = "action_noise_scale" in rs
+        act_noise_scale = float(rs.get("action_noise_scale", 0.0))
+        wind = float(rs.get("wind_force_n", 0.0))
+        wind_ang = float(self._uniform(self._fold_in(key, 3), (), 0.0, 2.0 * np.pi))
+        wind_vec = wind * np.array([np.cos(wind_ang), np.sin(wind_ang), 0.0])
+        base_body = int(model.jnt_bodyid[0])
+        has_wm = "world_model_scale" in rs
+        if has_wm:
+            from breakpoint_mjx.rollout import action_correction
+
+            correction = action_correction(self.env)
+            wm_scale = float(rs["world_model_scale"])
+        A = int(env.action_size)
+        # the extended control-path axes, byte-for-byte the rollout_one rules
+        has_jitter = "latency_jitter_steps" in rs
+        jitter = round(float(rs.get("latency_jitter_steps", 0.0)))
+        has_odelay = "obs_delay_steps" in rs
+        odelay = int(np.clip(round(float(rs.get("obs_delay_steps", 0.0))), 0, LMAX))
+        has_abias = "action_bias_scale" in rs
+        act_bias = (float(rs.get("action_bias_scale", 0.0))
+                    * np.asarray(self._normal(self._fold_in(key, 4), (A,)), np.float32))
+        has_mdrop = "motor_dropout_prob" in rs
+        mdrop = float(rs.get("motor_dropout_prob", 0.0))
+        has_stuck = "stuck_motor_step_frac" in rs
+        stuck_step = round(float(rs.get("stuck_motor_step_frac", 1.0)) * horizon)
+        stuck_idx = round(float(rs.get("stuck_motor_frac", 0.0)) * (A - 1))
+        prev = np.zeros(A, np.float32)
 
         buf = np.zeros((LMAX + 1, int(env.action_size)), dtype=np.float32)
         # Stateful policy (history / recurrent): same carry rule as rollout_one, built
         # from the reset obs plus the episode's sensor bias.
         pol = fast.policy if fast else self.policy_fn
         stateful = callable(getattr(self.policy_fn, "init_carry", None))
-        pcarry = (self.policy_fn.init_carry(_obs_with_state(
-            state.obs, np.asarray(_obs_state(state.obs)) + obs_bias)) if stateful else None)
+        sensor_mask = obs_sensor_mask(env, vec_shape[-1])
+        clean0 = np.asarray(_obs_state(state.obs))
+        held = perturb_obs(np, clean0, 0.0, obs_bias, np.zeros(vec_shape, bool), clean0,
+                           sensor_mask)[0]
+        pcarry = (self.policy_fn.init_carry(_obs_with_state(state.obs, held))
+                  if stateful else None)
+        obuf = np.repeat(np.asarray(held)[None], LMAX + 1, axis=0) if has_odelay else None
         calls = [0]
         steps = []
         states = [state] if collect_states else None
@@ -515,17 +585,43 @@ class MujocoCBackend:
             key, nk_noise, nk_policy = self._split3(key)
             vec = np.asarray(_obs_state(state.obs))
             gauss = obs_noise_scale * self._normal(nk_noise, vec.shape)
-            keep = (
-                self._uniform(self._fold_in(nk_noise, 1), vec.shape) >= obs_dropout_prob
-            ).astype(vec.dtype)
-            # Dropout zeros channels LAST, so a dropped channel reads exactly 0 (rollout_one).
-            perturbed = _obs_with_state(state.obs, (vec + gauss + obs_bias) * keep)
+            dropped = (self._uniform(self._fold_in(nk_noise, 1), vec.shape)
+                       < obs_dropout_prob)
+            # Same sensor-only, sample-and-hold rule as rollout_one (one shared function).
+            reading, held = perturb_obs(np, vec, gauss, obs_bias, dropped, held, sensor_mask)
+            if has_odelay:
+                obuf = np.concatenate([np.asarray(reading)[None], obuf[:-1]], axis=0)
+                reading = obuf[odelay]
+            perturbed = _obs_with_state(state.obs, reading.astype(vec.dtype))
             if stateful:
                 act, pcarry = pol(perturbed, nk_policy, pcarry)
             else:
                 act, _ = pol(perturbed, nk_policy)
             buf = np.concatenate([np.asarray(act, dtype=np.float32)[None], buf[:-1]], axis=0)
             delayed = buf[latency_steps]                      # lat=0 => no delay
+            if has_jitter:
+                u = float(self._uniform(self._fold_in(nk_noise, 3), ()))
+                delayed = buf[int(np.clip(latency_steps + int(np.floor(u * (jitter + 1))),
+                                          0, LMAX))]
+            if has_wm:
+                delayed = delayed + wm_scale * np.asarray(
+                    correction(vec, delayed), np.float32)
+            if has_abias:
+                delayed = delayed + act_bias
+            if has_act_noise:
+                delayed = delayed + act_noise_scale * np.asarray(
+                    self._normal(self._fold_in(nk_noise, 2), delayed.shape), np.float32)
+            if has_mdrop or has_stuck:
+                hold = np.zeros(A, bool)
+                if has_mdrop:
+                    hold |= self._uniform(self._fold_in(nk_noise, 4), (A,)) < mdrop
+                if has_stuck:
+                    hold |= (np.arange(A) == stuck_idx) & (t >= stuck_step)
+                delayed = np.where(hold, prev, delayed).astype(np.float32)
+                prev = delayed
+            if "wind_force_n" in rs:
+                xf = state.data.xfrc_applied.at[base_body, :3].set(wind_vec)
+                state = state.replace(data=state.data.replace(xfrc_applied=xf))
             # Gait-timed push on the base linear velocity, applied to the float64 C state
             # BEFORE stepping so the impulse is integrated this step (rollout_one order).
             if push_mag != 0.0 and t == push_step:

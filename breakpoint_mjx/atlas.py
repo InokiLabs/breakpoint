@@ -9,7 +9,8 @@ Grid (from ``failure.behavior_descriptor``):
   * axis 1 -- dominant failure mode (categorical, ``failure.FAILURE_MODES``)
   * axis 2 -- time-to-failure, normalized to [0,1] then binned into ``n_ttf_bins``.
 
-Fitness = transfer-weighted failure score (``failure_score * transfer_likelihood``),
+Fitness = plausibility-weighted failure score (``failure_score * transfer_score``, the
+record's ``transfer.joint_plausibility``),
 the same objective the rest of the engine maximizes, so each cell holds the most
 *realistic* failure of that mode/timing.
 

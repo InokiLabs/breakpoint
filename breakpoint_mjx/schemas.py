@@ -123,6 +123,10 @@ class FailureFamily:
     # class in {in_domain_risk, in_domain_low, outside_odd}. SIMULATION probabilities.
     # None when the stage did not run or the family was not certified.
     odd_risk: dict | None = None
+    # Defects vs coverage gaps (breakpoint_mjx/training_gap.py): {verdict: defect |
+    # coverage_gap | unknown, outside: [{dim, value, trained, excess, beyond_plausible}],
+    # cause_source}, against the declared TRAINING randomization. None when not run.
+    training_coverage: dict | None = None
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), sort_keys=True)

@@ -95,6 +95,16 @@ embedded. Each family is a region of parameter space where the policy fails, wit
 name, a representative replay, how often it failed and its plausibility score. The same
 run writes `failures.json` (every evaluated world) and `families.json`.
 
+**Defects vs coverage gaps.** Tell BreakPoint what the policy was trained with
+(`--train-dr training_dr.yaml`, or a contract from `breakpoint init --from ...`, which
+carries it) and every family is classified against it. A failure whose certified cause
+sits inside the trained ranges is a **defect** of the policy. A failure on an axis or
+value training never covered (latency on a policy trained with no delay) is a
+**coverage gap**: expected, and the fix is a randomization term, so the run also writes
+`training_dr_patch.yaml` with the ranges to add, capped at the plausible band, and the
+Isaac Lab / legged_gym field each one maps to. `breakpoint demo` does this for the
+bundled policy (`breakpoint_mjx/assets/demo/go1_training_dr.yaml`).
+
 ### Bring your own policy
 
 Policies: `onnx:/path/policy.onnx`, `params:/path/weights.npz` (named numpy arrays, e.g.
@@ -106,6 +116,18 @@ and RSL-RL recurrent (LSTM/GRU) actors are supported; see "Stateful policies" in
 Isaac Lab, RSL-RL, legged_gym or unitree_rl_gym? `breakpoint init --from rsl_rl <run dir>`
 writes a policy contract (observation order, scales, PD gains, training randomization).
 See `docs/byo-policy.md` and `docs/contract.md`.
+
+### Wider stress space
+
+Every legged robot ships a 16-axis space (`configs/<robot>/theta_space.yaml`: floor
+friction and slope, payload and centre of mass, PD gains, joint friction and armature,
+latency, sensor noise, bias and dropout, a timed push). `BP_THETA_SPACE=extended` swaps
+in `theta_space_extended.yaml` (30 axes) for every stage of a run. The 14 added axes are
+motor torque limits (battery sag, derating), one weak motor (which one is part of the
+search), joint damping, ground softness and bounce, actuator noise, a steady force on the
+base (wind, a dragged cable), latency jitter, sensor delay, motor zero offsets, lost
+command packets, and a motor that seizes mid-run. Undeclared axes are no-ops, so the default space
+gives the same results as before.
 
 ## Rate, gate, verify
 
@@ -126,6 +148,11 @@ hashes. Reports never contain weights, trajectories or file paths beyond the pol
 breakpoint gate --robot go1 --baseline checkpoints/prod.pkl --candidate checkpoints/candidate.pkl \
     --battery legged-quadruped-v1 --budget smoke --out gate.json
 ```
+
+The gate also compares velocity-tracking error on every seed where neither checkpoint
+fell (an exact paired sign test with a 10% deadband), which catches a policy getting
+worse at walking before it starts falling. It is advisory unless you pass
+`--fail-on-degradation` (alpha is then split with the fall tests).
 
 Exit 0 means no evidence the candidate falls more than the baseline; exit 1 means a
 regression (the cells are printed); exit 2 means the gate could not run (never reported
@@ -162,6 +189,13 @@ key verifies it. Details: `docs/attest.md`.
   budget, not a proof that no failure exists.
 - **Plausibility is a heuristic.** The sim-to-real plausibility score is a transparent,
   hand-set function of parameter ranges, not a measured or calibrated sim-to-real metric.
+  The search weights failures by its joint form (each axis at its hard bound halves it),
+  so compound worst-case corners rank low instead of costing 1/16 per axis.
+- **Observation adversaries act on sensors only.** Noise, bias and dropout touch the
+  sensor channels a target declares, never the velocity command, the policy's previous
+  action or a gait clock; a dropped channel holds its last reading. Ratings record this
+  as `engine.obs_model` (`sensor-hold-v2`); ratings under the earlier model are not
+  comparable.
 - **Per-target validation.** Results for one robot or simulator configuration do not
   generalise to another without re-running.
 - **Scope.** Velocity-tracking locomotion (quadrupeds and humanoids) plus the Panda
